@@ -1,0 +1,29 @@
+{
+  "daily_generated": [
+    "2026-06-24",
+    "2026-06-25",
+    "2026-06-26",
+    "2026-06-27"
+  ],
+  "last_daily_maintenance_date": "2026-06-29",
+  "last_monthly_maintenance_month": "2026-05",
+  "last_weekly_maintenance_week": "2026-W26",
+  "middle_term_archived": [],
+  "middle_term_weekly_archived": [
+    "2026-W26"
+  ],
+  "monthly_chroma_indexed": [],
+  "monthly_generated": [],
+  "short_term_archived": [
+    "2026-06-24",
+    "2026-06-25",
+    "2026-06-26",
+    "2026-06-27"
+  ],
+  "weekly_chroma_indexed": [
+    "2026-W26"
+  ],
+  "weekly_generated": [
+    "2026-W26"
+  ]
+}

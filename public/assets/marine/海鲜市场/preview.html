@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>海鲜市场</title>
+  <style>
+    body { margin:0; padding:2rem; background:#0a1520; color:#7a9aaa; font-family:system-ui,sans-serif; }
+    h1 { text-align:center; font-weight:300; letter-spacing:.3em; color:rgba(255,255,255,.5); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:1rem; max-width:1100px; margin:2rem auto; }
+    .item { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:.8rem; text-align:center; }
+    .item img { max-width:100%; max-height:90px; object-fit:contain; filter:drop-shadow(0 0 6px rgba(255,255,255,.12)); }
+    .item span { display:block; margin-top:.4rem; font-size:.7rem; color:rgba(255,255,255,.45); }
+  </style>
+</head>
+<body>
+  <h1>海鲜市场</h1>
+  <div class="grid" id="g"></div>
+  <script>
+    const files = ["海草-右.png","海草-左.png","珊瑚-枝-左.png","珊瑚-枝-右.png","海草-浪.png","海胆.png","鱿鱼-大.png","海绵.png","水母.png","海星.png","鹦鹉螺.png","海葵.png","鱿鱼-小.png","鱿鱼.png","河豚.png","虾-左.png","虾-中.png","鱼-大.png","珊瑚-小.png","虾-右.png","鱼-双.png","鱼群-三.png","浮游生物-菊.png","全图-透明.png","鱼-01.png","鱼-02.png","鱼-03.png","鱼-04.png","鱼-05.png","鱼-06.png","鱼-07.png","鱼-08.png","鱼-09.png","鱼-10.png","鱼-11.png","鱼-12.png","鱼-13.png","鱼-14.png","鱼-15.png","鱼-16.png","气泡-01.png","气泡-02.png","气泡-03.png","气泡-04.png","气泡-05.png","气泡-06.png","气泡-07.png","气泡-08.png"];
+    const g = document.getElementById('g');
+    files.forEach(f => {
+      const d = document.createElement('div');
+      d.className = 'item';
+      d.innerHTML = `<img src="${f}" alt=""/><span>${f.replace('.png','')}</span>`;
+      g.appendChild(d);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+export { AssetLoader } from './AssetLoader'
+export { BubbleCluster } from './BubbleCluster'
+export { Fish } from './Fish'
+export { FishSchool } from './FishSchool'
+export { FloatingCreature } from './FloatingCreature'
+export { GroundDecor } from './GroundDecor'
+export { OceanScene } from './OceanScene'
+export { WanderCreature } from './WanderCreature'

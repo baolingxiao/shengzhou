@@ -1,0 +1,10 @@
+{
+  "timezone": "local",
+  "work_weekdays": [0, 1, 2, 3, 4],
+  "work_start": "10:00",
+  "work_end": "17:00",
+  "overtime_tp_cost": 5,
+  "overtime_active_minutes": 120,
+  "refusal_template": "我下班啦，老板。现在是私人时间，电脑操控和网页搜索都关着——除非你让我加班，否则只能陪你聊天哦。",
+  "overtime_prompt_template": "要说加班也行。不过非工作时间代劳要算你欠我一次，亲密度会扣 {cost} 点。回复「麻烦你加个班」之类我就继续办你刚才那件事。"
+}

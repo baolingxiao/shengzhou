@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Warm mica — soft cream-white with beige undertone */
+  --color-background: #0f0f14;
+  --color-background-soft: #466a77;
+  --color-foreground: #4a433c;
+  --color-muted: #9c948a;
+  --color-glow: #005aa7;
+  --color-glow-core: #fffde4;
+  --color-glow-warm: #005aa7;
+  --color-surface: #f3ede4;
+  --color-border: #e8e0d4;
+  --color-rose-top: #fffde4;
+  --color-rose-bottom: #005aa7;
+
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-foreground);
+  background-color: #0f0f14;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-glow) 20%, var(--color-background));
+}

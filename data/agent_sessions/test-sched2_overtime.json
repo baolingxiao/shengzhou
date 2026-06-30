@@ -1,0 +1,9 @@
+{
+  "session_id": "test-sched2",
+  "deferred_task_text": "",
+  "awaiting_overtime_consent": false,
+  "overtime_active": true,
+  "overtime_granted_at": "2026-06-27T04:50:14.342543+00:00",
+  "overtime_expires_at": "2026-06-27T06:50:14.342543+00:00",
+  "updated_at": "2026-06-27T04:50:14.342825+00:00"
+}
