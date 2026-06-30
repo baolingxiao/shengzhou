@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,6 +43,8 @@ from server.auth import authenticate
 from server.memory_routes import attach_chat_admin_routes, attach_memory_message_routes, router as admin_router
 from server.trust_routes import router as trust_router
 from server.system_routes import router as system_router
+from server.shenzhou_bridge_auth import require_shenzhou_bridge_token
+from server.shenzhou_proxy import router as shenzhou_proxy_router
 from server.trace_routes import router as trace_router
 from server.voice_service import VoiceService
 
@@ -315,6 +317,7 @@ app.include_router(admin_router)
 app.include_router(trust_router)
 app.include_router(system_router)
 app.include_router(trace_router)
+app.include_router(shenzhou_proxy_router)
 
 
 @app.on_event("startup")
@@ -346,11 +349,17 @@ async def api_shenzhou_pull_life_context() -> dict[str, object]:
 
 
 @app.post("/api/shenzhou/run-pipeline")
-async def api_shenzhou_run_pipeline() -> dict[str, object]:
+async def api_shenzhou_run_pipeline(
+    skip_bulk_fix: bool = False,
+    skip_simulation: bool = False,
+) -> dict[str, object]:
     """手动触发：世界引擎每日流水线（背景优化 + 模拟）。"""
     from neuralpal.shenzhou.scheduler import job_world_daily_pipeline
 
-    return job_world_daily_pipeline()
+    return job_world_daily_pipeline(
+        skip_bulk_fix=skip_bulk_fix,
+        skip_simulation=skip_simulation,
+    )
 
 
 @app.get("/api/shenzhou/status")
@@ -359,10 +368,15 @@ async def api_shenzhou_status() -> dict[str, object]:
     from neuralpal.shenzhou.client import ping
 
     s = get_settings()
+    world_url = s.shenzhou_world_api_url.strip()
+    cache_only = s.shenzhou_integration_enabled and not world_url
+    reachable = bool(world_url) and ping() if s.shenzhou_integration_enabled else False
     return {
         "enabled": s.shenzhou_integration_enabled,
+        "scheduler_enabled": s.shenzhou_scheduler_enabled,
+        "cache_only": cache_only,
         "world_api_url": s.shenzhou_world_api_url,
-        "reachable": ping() if s.shenzhou_integration_enabled else False,
+        "reachable": reachable,
         "user_entity_slug": s.shenzhou_user_entity_slug,
         "schedule": {
             "sync": f"{s.shenzhou_sync_hour:02d}:{s.shenzhou_sync_minute:02d}",
@@ -371,6 +385,41 @@ async def api_shenzhou_status() -> dict[str, object]:
             "timezone": s.shenzhou_timezone,
         },
     }
+
+
+@app.get("/api/shenzhou/export-user-day")
+async def api_shenzhou_export_user_day(
+    session_id: str = DEFAULT_SESSION_ID,
+    _: None = Depends(require_shenzhou_bridge_token),
+) -> dict[str, object]:
+    """本地桥接：导出云端今日对话，供写入本地世界模型。"""
+    from datetime import date
+
+    from neuralpal.config import get_settings
+    from neuralpal.shenzhou.sync import collect_session_day_payload
+
+    s = get_settings()
+    return collect_session_day_payload(
+        session_id,
+        date.today(),
+        user_display_name=s.shenzhou_user_display_name,
+    )
+
+
+@app.post("/api/shenzhou/push-life-context")
+async def api_shenzhou_push_life_context(
+    payload: dict[str, object],
+    _: None = Depends(require_shenzhou_bridge_token),
+) -> dict[str, object]:
+    """本地桥接：把本地世界引擎生成的生活上下文写入云端缓存。"""
+    from datetime import date
+
+    from neuralpal.shenzhou.sync import cache_life_context
+
+    day_str = str(payload.get("date") or "")
+    day = date.fromisoformat(day_str) if day_str else date.today()
+    path = cache_life_context(payload, day)
+    return {"ok": True, "cache": str(path), "date": day.isoformat()}
 
 
 @app.get("/api/health")
@@ -683,7 +732,7 @@ if _FRONTEND_DIST is not None:
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str) -> FileResponse:
-        if full_path.startswith("api/"):
+        if full_path.startswith(("api/", "world/")):
             raise HTTPException(status_code=404, detail="Not Found")
         target = (_FRONTEND_DIST / full_path).resolve()
         try:

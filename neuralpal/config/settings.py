@@ -1251,6 +1251,10 @@ class Settings(BaseSettings):
         default=True,
         validation_alias="SHENZHOU_INTEGRATION_ENABLED",
     )
+    shenzhou_scheduler_enabled: bool = Field(
+        default=True,
+        validation_alias="SHENZHOU_SCHEDULER_ENABLED",
+    )
     shenzhou_world_api_url: str = Field(
         default="http://127.0.0.1:3000",
         validation_alias="SHENZHOU_WORLD_API_URL",
@@ -1299,6 +1303,15 @@ class Settings(BaseSettings):
     @field_validator("shenzhou_integration_enabled", mode="before")
     @classmethod
     def _coerce_shenzhou_integration(cls, v: Any) -> bool:
+        if v is None or v == "":
+            return True
+        if isinstance(v, bool):
+            return v
+        return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+    @field_validator("shenzhou_scheduler_enabled", mode="before")
+    @classmethod
+    def _coerce_shenzhou_scheduler(cls, v: Any) -> bool:
         if v is None or v == "":
             return True
         if isinstance(v, bool):

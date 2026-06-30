@@ -34,8 +34,11 @@ LIFE_STATUS_PATTERNS = [
 
 
 def is_shenzhou_integration_enabled() -> bool:
-    s = get_settings()
-    return bool(s.shenzhou_integration_enabled and s.shenzhou_world_api_url.strip())
+    return bool(get_settings().shenzhou_integration_enabled)
+
+
+def _world_api_configured() -> bool:
+    return bool(get_settings().shenzhou_world_api_url.strip())
 
 
 def resolve_companion_instance_id_for_session(session_id: str) -> str | None:
@@ -129,12 +132,14 @@ def maybe_build_life_context_for_turn(
 
     today = date.today()
     ctx = _load_cached_context(today)
-    if ctx is None:
+    if ctx is None and _world_api_configured():
         try:
             ctx = fetch_life_context(today)
         except Exception:
             logger.debug("shenzhou life context fetch failed", exc_info=True)
             return "", None
+    if ctx is None:
+        return "", None
 
     addon = _format_life_addon(ctx, companion_name=companion_name)
     snippet_id = f"shenzhou_{ctx.get('date', today.isoformat())}"

@@ -44,9 +44,13 @@ def job_sync_user_day(session_id: str | None = None) -> dict:
         return {"ok": False, "error": str(exc)}
 
 
-def job_world_daily_pipeline() -> dict:
+def job_world_daily_pipeline(*, skip_bulk_fix: bool = False, skip_simulation: bool = False) -> dict:
     try:
-        result = run_daily_pipeline(_now_local().date(), skip_bulk_fix=False)
+        result = run_daily_pipeline(
+            _now_local().date(),
+            skip_bulk_fix=skip_bulk_fix,
+            skip_simulation=skip_simulation,
+        )
         return {"ok": True, "result": result}
     except Exception as exc:
         logger.exception("[shenzhou-scheduler] daily pipeline failed")
@@ -117,8 +121,9 @@ def _scheduler_loop(interval_seconds: int) -> None:
 def start_shenzhou_scheduler(*, interval_seconds: int = 30) -> bool:
     global _scheduler_started
     settings = get_settings()
-    if not settings.shenzhou_integration_enabled:
-        logger.info("[shenzhou-scheduler] disabled")
+    if not settings.shenzhou_integration_enabled or not settings.shenzhou_scheduler_enabled:
+        logger.info("[shenzhou-scheduler] disabled (integration=%s scheduler=%s)",
+                    settings.shenzhou_integration_enabled, settings.shenzhou_scheduler_enabled)
         return False
 
     with _scheduler_lock:
