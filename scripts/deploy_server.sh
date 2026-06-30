@@ -54,7 +54,18 @@ ensure_service_user() {
   fi
 }
 
+ensure_repo_ownership() {
+  if [[ ! -d "$JARVIS_INSTALL_DIR" ]]; then
+    return 0
+  fi
+  log "修正仓库目录归属 $JARVIS_SERVICE_USER …"
+  chown -R "$JARVIS_SERVICE_USER:$JARVIS_SERVICE_USER" "$JARVIS_INSTALL_DIR"
+  # root 克隆后由 jarvis 用户 git pull 会触发 safe.directory 检查
+  sudo -u "$JARVIS_SERVICE_USER" git config --global --add safe.directory "$JARVIS_INSTALL_DIR" 2>/dev/null || true
+}
+
 clone_or_pull() {
+  ensure_repo_ownership
   if [[ -d "$JARVIS_INSTALL_DIR/.git" ]]; then
     log "拉取最新代码 $JARVIS_GIT_REPO ($JARVIS_BRANCH) …"
     sudo -u "$JARVIS_SERVICE_USER" git -C "$JARVIS_INSTALL_DIR" fetch origin "$JARVIS_BRANCH"
@@ -170,6 +181,7 @@ cmd_update() {
     err "未找到 $JARVIS_INSTALL_DIR，请先运行: sudo bash $0 install"
     exit 1
   fi
+  ensure_service_user
   clone_or_pull
   install_python_deps
   build_frontend
