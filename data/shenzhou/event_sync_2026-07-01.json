@@ -1,0 +1,11 @@
+{
+  "date": "2026-07-01",
+  "today_event_count": 4,
+  "new_event_count": 0,
+  "resolved_event_count": 0,
+  "new_events": [],
+  "resolved_events": [],
+  "chat_done_signals": [],
+  "chat_new_signals": [],
+  "summary_text": "【事件同步摘要】\n- 今日事件总数：4\n- 新增事件：0\n- 已结束事件：0"
+}

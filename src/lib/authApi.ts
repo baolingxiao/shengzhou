@@ -1,7 +1,9 @@
 export type LoginResult = {
   ok: boolean
   username: string
+  role: 'developer' | 'user'
   is_admin: boolean
+  access_token: string
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {

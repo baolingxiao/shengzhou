@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""沈昼世界定时任务：23:59 用户日结 → 00:05 世界流水线 → 00:15 拉取生活上下文。"""
+"""沈昼世界定时任务：日结/流水线/拉取上下文 + 主动消息 + 长期压缩归档。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from neuralpal.config import get_settings
+from neuralpal.shenzhou.context_archive import run_context_archive
 from neuralpal.shenzhou.client import fetch_life_context, ping, run_daily_pipeline
+from neuralpal.shenzhou.proactive import proactive_status, run_proactive_outreach
 from neuralpal.shenzhou.sync import cache_life_context, push_user_day_to_world
 
 logger = logging.getLogger(__name__)
@@ -68,6 +70,24 @@ def job_pull_life_context() -> dict:
         return {"ok": False, "error": str(exc)}
 
 
+def job_archive_life_context(*, backfill: bool = False) -> dict:
+    try:
+        result = run_context_archive(now=_now_local(), backfill=backfill)
+        return {"ok": bool(result.get("ok", True)), "result": result}
+    except Exception as exc:
+        logger.exception("[shenzhou-scheduler] archive life context failed")
+        return {"ok": False, "error": str(exc)}
+
+
+def job_proactive_message(*, force: bool = False) -> dict:
+    try:
+        result = run_proactive_outreach(now=_now_local(), force=force)
+        return {"ok": bool(result.get("ok", True)), "result": result}
+    except Exception as exc:
+        logger.exception("[shenzhou-scheduler] proactive message failed")
+        return {"ok": False, "error": str(exc)}
+
+
 def _should_run(hour: int, minute: int, last_key: str, state: dict) -> bool:
     now = _now_local()
     key = f"{now.date().isoformat()}:{hour:02d}:{minute:02d}"
@@ -75,6 +95,18 @@ def _should_run(hour: int, minute: int, last_key: str, state: dict) -> bool:
         state[last_key] = key
         return True
     return False
+
+
+def _should_run_every(minutes: int, last_key: str, state: dict) -> bool:
+    if minutes <= 0:
+        return False
+    now = _now_local()
+    slot = (now.hour * 60 + now.minute) // minutes
+    key = f"{now.date().isoformat()}:{slot}"
+    if state.get(last_key) == key:
+        return False
+    state[last_key] = key
+    return True
 
 
 def _tick(state: dict) -> None:
@@ -103,6 +135,16 @@ def _tick(state: dict) -> None:
     ):
         logger.info("[shenzhou-scheduler] pulling life context")
         job_pull_life_context()
+        if settings.shenzhou_context_archive_enabled:
+            logger.info("[shenzhou-scheduler] archiving life context after pull")
+            job_archive_life_context(backfill=False)
+
+    if settings.shenzhou_context_archive_enabled and _should_run_every(60, "last_archive_hour", state):
+        job_archive_life_context(backfill=False)
+
+    if settings.shenzhou_proactive_message_enabled:
+        if _should_run_every(settings.shenzhou_proactive_check_interval_minutes, "last_proactive", state):
+            job_proactive_message(force=False)
 
 
 def _scheduler_loop(interval_seconds: int) -> None:
@@ -148,3 +190,15 @@ def start_shenzhou_scheduler(*, interval_seconds: int = 30) -> bool:
 def run_daily_for_user(user_id: str, *, companion_instance_id: str | None = None) -> None:
     del companion_instance_id
     job_sync_user_day(user_id)
+
+
+def scheduler_status() -> dict[str, object]:
+    s = get_settings()
+    return {
+        "enabled": s.shenzhou_integration_enabled and s.shenzhou_scheduler_enabled,
+        "proactive": proactive_status(),
+        "context_archive": {
+            "enabled": s.shenzhou_context_archive_enabled,
+            "keep_raw_days": s.shenzhou_context_keep_raw_days,
+        },
+    }

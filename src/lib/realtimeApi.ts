@@ -1,3 +1,5 @@
+import { authHeaders } from './authSession'
+
 export type RealtimeSessionResponse = {
   client_secret: string
   model: string
@@ -15,7 +17,7 @@ export async function createRealtimeSession(params: {
 }): Promise<RealtimeSessionResponse> {
   const resp = await fetch(`${API_BASE}/realtime/session`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       character_id: params.characterId,
       session_id: params.sessionId,

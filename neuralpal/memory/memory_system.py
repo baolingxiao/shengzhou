@@ -72,6 +72,7 @@ from neuralpal.core_rules import (
     validate_before_generation,
 )
 from neuralpal.characters.models import AICharacter
+from neuralpal.characters.runtime_persona import build_runtime_persona_addon
 from neuralpal.characters.prompt_bridge import build_character_system_addon, resolve_character_for_session
 from neuralpal.memory.transient import TransientBuffer
 from neuralpal.memory.chroma_runtime import get_chroma_client
@@ -91,6 +92,7 @@ from neuralpal.llm.llm_router import (
     verbose_log_anthropic_usage,
 )
 from neuralpal.tools.agent.reply import is_agent_delegation_user_text, reconcile_agent_reply_text
+from neuralpal.tools.agent.prompt_addon import build_agent_capability_bridge
 
 logger = logging.getLogger(__name__)
 
@@ -241,6 +243,15 @@ _MEMORY_CAPABILITY_BRIDGE: Final[str] = """
 - 用户喜欢暧昧、亲密、自然、轻微吃醋的陪伴语气。
 - 日常聊天时不要工具化回答。
 - 日常陪伴时不要说"作为 AI 我没有情绪/不会睡觉/不会做梦"。
+""".strip()
+
+_MEMORY_CAPABILITY_BRIDGE_USER: Final[str] = """
+---
+### 【NeuralPal 记忆子系统｜行为须与此一致】
+你运行在本地四层记忆链路中，拥有真实记忆能力。禁止说「我无法保存记忆」。
+- ③ 短期工作记忆：当前会话中的历史消息可直接引用。
+- ② 长期记忆：若出现「长期记忆召回」段落，表示已命中本机知识库，请据实参考。
+- 本轮未出现召回段落，只代表未命中，不代表系统没有记忆功能。
 """.strip()
 
 _AGENT_CAPABILITY_BRIDGE: Final[str] = """
@@ -1416,6 +1427,7 @@ class NeuralPalMemoryPalaceOrchestrator:
         session_id: str = "default",
         agent_tools_allowed: bool = True,
         work_mode: str = "companion",
+        runtime_user: dict[str, str] | None = None,
     ) -> tuple[str, str]:
         """
         ① + 伴侣人格层 + 记忆桥接 + ②：构造单条 system 正文。
@@ -1429,8 +1441,15 @@ class NeuralPalMemoryPalaceOrchestrator:
         else:
             _verbose_print(self.verbose, "[MEMORY_GATE] general route selected.")
             retrieved = self._lt.retrieve_for_prompt(rq, top_k=3)
+        is_standard_user = (runtime_user or {}).get("role") == "user"
+        runtime_name = (runtime_user or {}).get("display_name", "").strip() or "我的 AI 助手"
         block = self._rules_core
-        if character is not None:
+        if is_standard_user:
+            block += "\n\n---\n" + build_runtime_persona_addon(
+                runtime_name,
+                (runtime_user or {}).get("style_prompt", ""),
+            )
+        elif character is not None:
             block += "\n\n---\n" + build_character_system_addon(character)
             _verbose_print(
                 self.verbose,
@@ -1449,10 +1468,16 @@ class NeuralPalMemoryPalaceOrchestrator:
 
             sid = getattr(self, "_session_id", "default")
             has_pending = load_pending(sid) is not None
-            block += "\n\n---\n" + build_agent_system_addon(has_pending=has_pending)
-        block += "\n\n" + _MEMORY_CAPABILITY_BRIDGE
+            assistant_name = runtime_name if is_standard_user else (character.name if character else "沈昼")
+            block += "\n\n---\n" + build_agent_system_addon(
+                has_pending=has_pending,
+                assistant_name=assistant_name,
+                developer_mode=not is_standard_user,
+            )
+        block += "\n\n" + (_MEMORY_CAPABILITY_BRIDGE_USER if is_standard_user else _MEMORY_CAPABILITY_BRIDGE)
         if get_settings().agent_enabled and agent_tools_allowed:
-            block += "\n\n" + _AGENT_CAPABILITY_BRIDGE
+            assistant_name = runtime_name if is_standard_user else (character.name if character else "沈昼")
+            block += "\n\n" + build_agent_capability_bridge(assistant_name=assistant_name)
         from neuralpal.chat.plain_text import PLAIN_TEXT_OUTPUT_RULE
 
         block += "\n\n" + PLAIN_TEXT_OUTPUT_RULE
@@ -1541,6 +1566,7 @@ class NeuralPalMemoryPalaceOrchestrator:
         *,
         session_id: str = "default",
         character_id: str | None = None,
+        runtime_user: dict[str, str] | None = None,
     ) -> MemoryChatTurnResult:
         """
         固定主流程（请勿打乱顺序）：
@@ -1557,7 +1583,8 @@ class NeuralPalMemoryPalaceOrchestrator:
         """
         self._transient.clear()
         self._session_id = (session_id or "default").strip()[:120] or "default"
-        if character_id:
+        is_standard_user = (runtime_user or {}).get("role") == "user"
+        if character_id and not is_standard_user:
             from neuralpal.characters.session_binding import get_session_character_binding
 
             get_session_character_binding().bind(self._session_id, character_id)
@@ -1575,8 +1602,6 @@ class NeuralPalMemoryPalaceOrchestrator:
         trust_points: int | None = None
         agent_tools_allowed = True
 
-        from neuralpal.schedule.work_preprocess import preprocess_work_schedule
-
         _tr = None
         try:
             from neuralpal.trace.context import get_trace
@@ -1587,61 +1612,67 @@ class NeuralPalMemoryPalaceOrchestrator:
         except Exception:
             pass
 
-        work_pre = preprocess_work_schedule(
-            raw_user_text,
-            session_id=self._session_id,
-            character_id=character_id,
-        )
-        if _tr is not None:
-            try:
-                _tr.record_work_preprocess(
-                    {
-                        "work_mode": work_pre.work_mode,
-                        "handled": work_pre.handled,
-                        "direct_reply": bool(work_pre.direct_reply),
-                        "agent_tools_allowed": work_pre.agent_tools_allowed,
-                        "trust_delta": work_pre.trust_delta,
-                        "trust_points": work_pre.trust_points,
-                        "effective_user_text": work_pre.effective_user_text,
-                    }
-                )
-            except Exception:
-                pass
-        work_mode = work_pre.work_mode
-        agent_tools_allowed = work_pre.agent_tools_allowed
-        trust_delta = work_pre.trust_delta
-        trust_points = work_pre.trust_points
-        user_text = work_pre.effective_user_text or raw_user_text
+        if not is_standard_user:
+            from neuralpal.schedule.work_preprocess import preprocess_work_schedule
 
-        if work_pre.handled and work_pre.direct_reply:
-            from neuralpal.chat.plain_text import finalize_user_visible_text
-
-            reply = finalize_user_visible_text(work_pre.direct_reply)
-            try:
-                self._short.save_context(
-                    {"input": raw_user_text},
-                    {"output": reply},
-                )
-            except Exception as exc:
-                logger.warning("短期记忆 save_context 失败：%s", exc)
-            try:
-                sync_short_term_snapshot(
-                    session_id=self._session_id,
-                    messages=self._short.chat_memory.messages,
-                    rolled_summaries=self._rolled_summaries,
-                    palace_root=self._palace_root,
-                )
-            except Exception as exc:
-                logger.debug("短期记忆 Obsidian 同步失败（忽略）：%s", exc)
-            self._transient.clear()
-            return MemoryChatTurnResult(
-                text=reply,
-                route=ROUTE_GENERAL,
-                blocked=False,
-                work_mode=work_mode,
-                trust_delta=trust_delta,
-                trust_points=trust_points,
+            work_pre = preprocess_work_schedule(
+                raw_user_text,
+                session_id=self._session_id,
+                character_id=character_id,
             )
+            if _tr is not None:
+                try:
+                    _tr.record_work_preprocess(
+                        {
+                            "work_mode": work_pre.work_mode,
+                            "handled": work_pre.handled,
+                            "direct_reply": bool(work_pre.direct_reply),
+                            "agent_tools_allowed": work_pre.agent_tools_allowed,
+                            "trust_delta": work_pre.trust_delta,
+                            "trust_points": work_pre.trust_points,
+                            "effective_user_text": work_pre.effective_user_text,
+                        }
+                    )
+                except Exception:
+                    pass
+            work_mode = work_pre.work_mode
+            agent_tools_allowed = work_pre.agent_tools_allowed
+            trust_delta = work_pre.trust_delta
+            trust_points = work_pre.trust_points
+            user_text = work_pre.effective_user_text or raw_user_text
+
+            if work_pre.handled and work_pre.direct_reply:
+                from neuralpal.chat.plain_text import finalize_user_visible_text
+
+                reply = finalize_user_visible_text(work_pre.direct_reply)
+                try:
+                    self._short.save_context(
+                        {"input": raw_user_text},
+                        {"output": reply},
+                    )
+                except Exception as exc:
+                    logger.warning("短期记忆 save_context 失败：%s", exc)
+                try:
+                    sync_short_term_snapshot(
+                        session_id=self._session_id,
+                        messages=self._short.chat_memory.messages,
+                        rolled_summaries=self._rolled_summaries,
+                        palace_root=self._palace_root,
+                    )
+                except Exception as exc:
+                    logger.debug("短期记忆 Obsidian 同步失败（忽略）：%s", exc)
+                self._transient.clear()
+                return MemoryChatTurnResult(
+                    text=reply,
+                    route=ROUTE_GENERAL,
+                    blocked=False,
+                    work_mode=work_mode,
+                    trust_delta=trust_delta,
+                    trust_points=trust_points,
+                )
+        else:
+            work_mode = "companion"
+            agent_tools_allowed = True
 
         if get_settings().agent_enabled and agent_tools_allowed:
             from neuralpal.tools.agent.preprocess import preprocess_agent_turn
@@ -1732,8 +1763,10 @@ class NeuralPalMemoryPalaceOrchestrator:
             except Exception:
                 pass
 
-        active_character = resolve_character_for_session(
-            self._session_id, character_id=character_id
+        active_character = (
+            None
+            if is_standard_user
+            else resolve_character_for_session(self._session_id, character_id=character_id)
         )
         system_block, retrieved_block = self._build_system_block(
             user_text,
@@ -1741,6 +1774,7 @@ class NeuralPalMemoryPalaceOrchestrator:
             session_id=self._session_id,
             agent_tools_allowed=agent_tools_allowed,
             work_mode=work_mode or "companion",
+            runtime_user=runtime_user,
         )
 
         recent_texts: List[str] = []
@@ -1749,48 +1783,48 @@ class NeuralPalMemoryPalaceOrchestrator:
             if isinstance(content, str) and content.strip():
                 recent_texts.append(content.strip())
 
-        # 话题雷达：可选注入对话种子（失败不影响主聊天）
-        self._active_topic_seed_id: str | None = None
-        try:
-            from neuralpal.topic_radar.bridge import (
-                build_seed_system_addon,
-                maybe_select_seed_for_turn,
-            )
-            seed = maybe_select_seed_for_turn(
-                user_id=self._session_id,
-                user_message=user_text,
-                recent_messages=recent_texts,
-            )
-            if seed is not None:
-                companion_name = active_character.name if active_character else ""
-                system_block += build_seed_system_addon(seed, companion_name=companion_name)
-                self._active_topic_seed_id = seed.seed_id
-        except Exception:
-            logger.debug("topic_radar inject skipped", exc_info=True)
-
-        # 数字伴侣生活：可选注入生活轨迹（失败不影响主聊天）
-        self._active_life_snippet_id: str | None = None
-        try:
-            from neuralpal.companion_life.bridge import (
-                maybe_build_life_context_for_turn,
-                on_life_snippet_used,
-                resolve_companion_instance_id_for_session,
-            )
-
-            life_iid = resolve_companion_instance_id_for_session(self._session_id)
-            if life_iid:
-                life_addon, life_snip = maybe_build_life_context_for_turn(
+        # 话题雷达/数字伴侣生活仅开发者角色启用，普通用户仅走本地自定义 persona。
+        self._active_topic_seed_id = None
+        self._active_life_snippet_id = None
+        if not is_standard_user:
+            try:
+                from neuralpal.topic_radar.bridge import (
+                    build_seed_system_addon,
+                    maybe_select_seed_for_turn,
+                )
+                seed = maybe_select_seed_for_turn(
                     user_id=self._session_id,
-                    companion_instance_id=life_iid,
-                    companion_name=active_character.name if active_character else "",
                     user_message=user_text,
                     recent_messages=recent_texts,
                 )
-                if life_addon:
-                    system_block += life_addon
-                    self._active_life_snippet_id = life_snip
-        except Exception:
-            logger.debug("companion_life inject skipped", exc_info=True)
+                if seed is not None:
+                    companion_name = active_character.name if active_character else ""
+                    system_block += build_seed_system_addon(seed, companion_name=companion_name)
+                    self._active_topic_seed_id = seed.seed_id
+            except Exception:
+                logger.debug("topic_radar inject skipped", exc_info=True)
+
+            try:
+                from neuralpal.companion_life.bridge import (
+                    maybe_build_life_context_for_turn,
+                    on_life_snippet_used,
+                    resolve_companion_instance_id_for_session,
+                )
+
+                life_iid = resolve_companion_instance_id_for_session(self._session_id)
+                if life_iid:
+                    life_addon, life_snip = maybe_build_life_context_for_turn(
+                        user_id=self._session_id,
+                        companion_instance_id=life_iid,
+                        companion_name=active_character.name if active_character else "",
+                        user_message=user_text,
+                        recent_messages=recent_texts,
+                    )
+                    if life_addon:
+                        system_block += life_addon
+                        self._active_life_snippet_id = life_snip
+            except Exception:
+                logger.debug("companion_life inject skipped", exc_info=True)
 
         hist_msgs, prefix_digest = self._working_memory_messages_for_llm()
         if _tr is not None:
@@ -1962,34 +1996,35 @@ class NeuralPalMemoryPalaceOrchestrator:
         # 第二层兜底：命中召回 + 身份/偏好类问题，若仍否认记忆则强制一致性修复。
         final_text = enforce_memory_consistency(user_text, retrieved_block, final_text)
 
-        if route_hint not in ("code", "deep"):
+        if not is_standard_user and route_hint not in ("code", "deep"):
             final_text = post_process_companion_style(final_text)
 
-        try:
-            from neuralpal.chat.dev_context_status import log_dev_context_status
+        if not is_standard_user:
+            try:
+                from neuralpal.chat.dev_context_status import log_dev_context_status
 
-            log_dev_context_status(
-                self._session_id,
-                character_id=character_id,
-                persona_loaded=active_character is not None,
-                short_term_loaded=bool(self._short.chat_memory.messages),
-                long_term_loaded=bool(retrieved_block.strip()),
-                life_context_loaded=bool(getattr(self, "_active_life_snippet_id", None))
-                or "数字伴侣生活" in system_block,
-            )
-        except Exception:
-            logger.debug("dev context status log skipped", exc_info=True)
+                log_dev_context_status(
+                    self._session_id,
+                    character_id=character_id,
+                    persona_loaded=active_character is not None,
+                    short_term_loaded=bool(self._short.chat_memory.messages),
+                    long_term_loaded=bool(retrieved_block.strip()),
+                    life_context_loaded=bool(getattr(self, "_active_life_snippet_id", None))
+                    or "数字伴侣生活" in system_block,
+                )
+            except Exception:
+                logger.debug("dev context status log skipped", exc_info=True)
 
-        try:
-            from neuralpal.chat.response_signature import finalize_companion_user_reply
+            try:
+                from neuralpal.chat.response_signature import finalize_companion_user_reply
 
-            final_text = finalize_companion_user_reply(
-                final_text,
-                session_id=self._session_id,
-                character_id=active_character.id if active_character else character_id,
-            )
-        except Exception:
-            logger.debug("companion signature append skipped", exc_info=True)
+                final_text = finalize_companion_user_reply(
+                    final_text,
+                    session_id=self._session_id,
+                    character_id=active_character.id if active_character else character_id,
+                )
+            except Exception:
+                logger.debug("companion signature append skipped", exc_info=True)
 
         final_text = finalize_user_visible_text(final_text)
 
@@ -2026,7 +2061,7 @@ class NeuralPalMemoryPalaceOrchestrator:
             logger.warning("短期记忆 save_context 失败：%s", exc)
 
         seed_id = getattr(self, "_active_topic_seed_id", None)
-        if seed_id:
+        if (not is_standard_user) and seed_id:
             try:
                 from neuralpal.topic_radar.bridge import on_seed_used
 
@@ -2035,7 +2070,7 @@ class NeuralPalMemoryPalaceOrchestrator:
                 logger.debug("topic_radar mark used failed", exc_info=True)
 
         life_snip_id = getattr(self, "_active_life_snippet_id", None)
-        if life_snip_id:
+        if (not is_standard_user) and life_snip_id:
             try:
                 from neuralpal.companion_life.bridge import on_life_snippet_used
 
@@ -2088,12 +2123,13 @@ class NeuralPalMemoryPalaceOrchestrator:
             action_status = latest.status
             action_task_id = latest.task_id
         else:
-            try:
-                from neuralpal.schedule.work_preprocess import sync_overtime_after_agent
+            if not is_standard_user:
+                try:
+                    from neuralpal.schedule.work_preprocess import sync_overtime_after_agent
 
-                sync_overtime_after_agent(self._session_id)
-            except Exception:
-                logger.debug("overtime sync skipped", exc_info=True)
+                    sync_overtime_after_agent(self._session_id)
+                except Exception:
+                    logger.debug("overtime sync skipped", exc_info=True)
 
         return MemoryChatTurnResult(
             text=final_text,

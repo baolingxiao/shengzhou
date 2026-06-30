@@ -61,8 +61,11 @@ def sync_user_day(payload: dict[str, Any]) -> dict[str, Any]:
     return _request("POST", "/api/world/sync/user-day", body=payload)
 
 
-def run_daily_pipeline(day: date | None = None, *, skip_bulk_fix: bool = False) -> dict[str, Any]:
-    body: dict[str, Any] = {"skipBulkFix": skip_bulk_fix}
+def run_daily_pipeline(day: date | None = None, *, skip_bulk_fix: bool = False, skip_simulation: bool = False) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "skipBulkFix": skip_bulk_fix,
+        "skipSimulation": skip_simulation,
+    }
     if day:
         body["date"] = day.isoformat()
     return _request("POST", "/api/cron/daily-pipeline", body=body, timeout=300.0)

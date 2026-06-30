@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from neuralpal.characters.constants import DEFAULT_SESSION_ID
@@ -22,6 +22,7 @@ from neuralpal.system.permissions import (
     get_permissions_snapshot,
     open_system_settings,
 )
+from server.auth_session import AuthSession, require_auth_session, session_id_for_username
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 
@@ -88,6 +89,24 @@ async def api_system_permissions_auto_setup() -> dict:
 async def api_system_work_mode(
     session_id: str = DEFAULT_SESSION_ID,
     character_id: str | None = None,
+    session: AuthSession = Depends(require_auth_session),
 ) -> dict:
     """沈昼当前上下班 / 陪伴 / 加班模式。"""
-    return get_work_mode_snapshot(session_id, character_id=character_id)
+    del session_id
+    if session.role != "developer":
+        return {
+            "mode": "work",
+            "mode_label": "可代办",
+            "agent_tools_allowed": True,
+            "is_workday": True,
+            "clock": "--:--",
+            "work_window": "随时可用",
+            "timezone": "local",
+            "awaiting_overtime_consent": False,
+            "has_deferred_task": False,
+            "overtime_active": False,
+            "overtime_tp_cost": 0,
+            "work_start": None,
+            "work_end": None,
+        }
+    return get_work_mode_snapshot(session_id_for_username(session.username), character_id=character_id)

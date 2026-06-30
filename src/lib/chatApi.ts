@@ -3,6 +3,7 @@ import {
   DEFAULT_SESSION_ID,
 } from './characterConfig'
 import { traceHeaders } from './executionTrace'
+import { authHeaders } from './authSession'
 
 export type ChatMessage = {
   id: string
@@ -31,7 +32,10 @@ export type ChatReply = {
 export const API_BASE = '/api'
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(url, init)
+  const resp = await fetch(url, {
+    ...init,
+    headers: authHeaders(init?.headers),
+  })
   if (!resp.ok) {
     let detail = resp.statusText
     try {

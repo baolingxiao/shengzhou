@@ -24,7 +24,8 @@ export function NeuralInterface({
   onLogout,
   className,
 }: NeuralInterfaceProps) {
-  const { username, isAdmin: sessionIsAdmin, sessionId } = useUserSession()
+  const { username, role, isAdmin: sessionIsAdmin, sessionId } = useUserSession()
+  const isDeveloper = role === 'developer'
   const isAdmin = useAdminRole(username, sessionIsAdmin, visible)
   const {
     trust,
@@ -32,8 +33,8 @@ export function NeuralInterface({
     setTrustPoints,
     deltaFlash,
     applyFromChatReply,
-  } = useTrustPoints(visible, isAdmin, username)
-  const { snapshot: workMode, reload: reloadWorkMode } = useWorkMode(visible, sessionId)
+  } = useTrustPoints(visible && isDeveloper, isAdmin, username)
+  const { snapshot: workMode, reload: reloadWorkMode } = useWorkMode(visible && isDeveloper, sessionId)
 
   const handleChatReply = useCallback(
     (reply: import('../../lib/chatApi').ChatReply) => {
@@ -157,7 +158,7 @@ export function NeuralInterface({
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
-            <WorkModeBadge snapshot={workMode} />
+            {isDeveloper && <WorkModeBadge snapshot={workMode} />}
             <div className="flex items-center gap-2">
             {onLogout && (
               <button
@@ -180,7 +181,7 @@ export function NeuralInterface({
         >
           {messages.length === 0 && status !== 'offline' && (
             <p className="text-sm text-white/72 [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]">
-              唤醒完成。向 {character?.name ?? '沈昼'} 说点什么吧。
+              唤醒完成。向 {character?.name ?? '对方'} 说点什么吧。
             </p>
           )}
           {messages.map((msg) => (
@@ -289,7 +290,7 @@ export function NeuralInterface({
             )}
           </div>
           <label className="sr-only" htmlFor="neural-input">
-            向沈昼发送消息
+            发送消息
           </label>
           <div className="relative flex gap-2">
             <input
@@ -365,14 +366,16 @@ export function NeuralInterface({
         </div>
         </Panel>
 
-        <IntimacyBar
-          trust={trust}
-          editable={isAdmin}
-          saving={trustSaving}
-          deltaFlash={deltaFlash}
-          onChange={(value) => void setTrustPoints(value)}
-          className="max-h-[min(72vh,560px)]"
-        />
+        {isDeveloper && (
+          <IntimacyBar
+            trust={trust}
+            editable={isAdmin}
+            saving={trustSaving}
+            deltaFlash={deltaFlash}
+            onChange={(value) => void setTrustPoints(value)}
+            className="max-h-[min(72vh,560px)]"
+          />
+        )}
       </div>
     </motion.div>
   )

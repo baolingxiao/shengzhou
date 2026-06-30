@@ -1,5 +1,6 @@
 import { API_BASE } from './chatApi'
 import { DEFAULT_CHARACTER_ID } from './characterConfig'
+import { authHeaders } from './authSession'
 
 export type TrustSnapshot = {
   character_id: string
@@ -13,7 +14,10 @@ export type TrustSnapshot = {
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(url, init)
+  const resp = await fetch(url, {
+    ...init,
+    headers: authHeaders(init?.headers),
+  })
   if (!resp.ok) {
     let detail = resp.statusText
     try {

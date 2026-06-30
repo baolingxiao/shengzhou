@@ -2,7 +2,13 @@
   "users": [
     {
       "username": "guest",
-      "password": "guest"
+      "password": "guest",
+      "role": "user"
+    },
+    {
+      "username": "user_mason",
+      "password": "JarvisUser#2026!",
+      "role": "user"
     }
   ]
 }

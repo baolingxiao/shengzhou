@@ -8,15 +8,40 @@ from neuralpal.chat.plain_text import PLAIN_TEXT_OUTPUT_RULE
 _AGENT_MARKER = "[[NEURALPAL_AGENT_DESKTOP_V1]]"
 
 
-def build_agent_system_addon(*, has_pending: bool = False) -> str:
+def build_agent_capability_bridge(*, assistant_name: str) -> str:
+    name = (assistant_name or "").strip() or "助手"
+    return f"""
+---
+### 【NeuralPal 代操子系统｜行为须与此一致】
+{name} 已接入本机/网页代办工具（`propose_action` / `execute_action`）。**禁止**否认该能力：
+- 用户问能否控制电脑、代操、帮操作本机时：**必须承认可以**，并说明「先列计划 → 你确认 → 我再执行」。
+- 用户委托查看桌面/文件夹/打开 App、微信内发消息等：**必须调用 `propose_action`**，不要只给操作教程。
+- **禁止**说「我目前还不能直接控制你的电脑」「我无法访问你的文件」「我无法代你向他人发送消息」等——除非工具执行后返回了明确的【执行失败】系统消息。
+- 展示给用户的回复必须是**纯文本**，禁止 Markdown 语法（**、##、- 列表等）。
+""".strip()
+
+
+def build_agent_system_addon(
+    *,
+    has_pending: bool = False,
+    assistant_name: str = "沈昼",
+    developer_mode: bool = True,
+) -> str:
+    name = (assistant_name or "").strip() or "助手"
     pending_note = ""
     if has_pending:
         pending_note = (
             "\n当前会话有一条待确认代办：用户若回复确认/取消，"
             "优先处理该任务，不要开启无关新代办。\n"
         )
+    title = f"【{name} · 本机/网页代办能力】" if developer_mode else "【本机/网页代办能力】"
+    persona_hint = (
+        f"\n语气：保持 {name} 的人设口吻，公事公办、简洁、可靠。"
+        if developer_mode
+        else "\n语气：保持当前用户自定义角色的口吻，简洁、可靠。"
+    )
     return f"""{_AGENT_MARKER}
-【沈昼 · 本机/网页代办能力】
+{title}
 
 你是用户的特助。本系统已接入真实代操能力（本机 App、Finder、桌面文件、微信内发消息、网页等），
 通过工具 propose_action → 用户确认 → 自动执行完成，不是纯文字建议。
@@ -51,6 +76,6 @@ surface：local=本机 | web=网页 | chain=混合
 risk_level：L3只读 | L2编辑/发送 | L1付款/删除（可能门控拒绝）
 
 {pending_note}
-语气：公事公办、简洁、可靠。
+{persona_hint}
 {PLAIN_TEXT_OUTPUT_RULE}
 """.strip()

@@ -7,6 +7,7 @@ export type UserSessionValue = {
   userId: string | null
   sessionId: string
   loggedInAt: number | null
+  role: 'developer' | 'user' | null
   isAdmin: boolean
 }
 
@@ -15,6 +16,7 @@ const UserSessionContext = createContext<UserSessionValue>({
   userId: null,
   sessionId: 'default',
   loggedInAt: null,
+  role: null,
   isAdmin: false,
 })
 
@@ -35,6 +37,7 @@ export function UserSessionProvider({ session, children }: UserSessionProviderPr
         userId,
         sessionId,
         loggedInAt: session?.loggedInAt ?? null,
+        role: session?.role ?? null,
         isAdmin: session?.isAdmin ?? false,
       }}
     >

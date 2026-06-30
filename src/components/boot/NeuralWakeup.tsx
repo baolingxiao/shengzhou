@@ -30,22 +30,45 @@ type BootPhase = 'loading-audio' | 'awaiting-start' | 'running'
 type NeuralWakeupProps = {
   userName?: string
   authenticated?: boolean
+  role?: 'developer' | 'user' | null
   loginError?: string | null
   loggingIn?: boolean
   onLogin?: (username: string, password: string) => Promise<void>
   onLogout?: () => void
   onOpenProfile?: () => void
+  personaRequired?: boolean
+  personaConfigured?: boolean
+  personaLoading?: boolean
+  personaSaving?: boolean
+  personaError?: string | null
+  onSavePersona?: (
+    displayName: string,
+    stylePrompt: string,
+    apiKeys: {
+      chatgptApiKey: string
+      claudeApiKey: string
+      deepseekApiKey: string
+      doubaoApiKey: string
+    },
+  ) => Promise<void>
   onComplete?: () => void
 }
 
 export function NeuralWakeup({
   userName = 'Jin',
   authenticated = false,
+  role = null,
   loginError = null,
   loggingIn = false,
   onLogin,
   onLogout,
   onOpenProfile,
+  personaRequired = false,
+  personaConfigured = true,
+  personaLoading = false,
+  personaSaving = false,
+  personaError = null,
+  onSavePersona,
   onComplete,
 }: NeuralWakeupProps) {
   const [bootPhase, setBootPhase] = useState<BootPhase>('loading-audio')
@@ -214,11 +237,20 @@ export function NeuralWakeup({
         visible={bootPhase !== 'running'}
         loading={bootPhase === 'loading-audio'}
         authenticated={authenticated}
+        role={role}
         loggingIn={loggingIn}
         loginError={loginError}
+        personaRequired={personaRequired}
+        personaConfigured={personaConfigured}
+        personaLoading={personaLoading}
+        personaSaving={personaSaving}
+        personaError={personaError}
         onOpenProfile={onOpenProfile}
         onLogin={async (user, pass) => {
           await onLogin?.(user, pass)
+        }}
+        onSavePersona={async (displayName, stylePrompt, apiKeys) => {
+          await onSavePersona?.(displayName, stylePrompt, apiKeys)
         }}
         onStart={() => void handleStart()}
       />
@@ -260,7 +292,7 @@ export function NeuralWakeup({
 
       <NeuralInterface visible={chatUnlocked} onLogout={onLogout} />
 
-      <ShenzhouAdminButton visible={chatUnlocked} />
+      <ShenzhouAdminButton visible={chatUnlocked && role === 'developer'} />
       <MacPermissionsButton visible={chatUnlocked} />
 
       {import.meta.env.DEV && isRunning && (

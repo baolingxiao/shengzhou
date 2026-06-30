@@ -49,6 +49,7 @@ def create_realtime_session(
     character_id: str | None,
     session_id: str,
     mode: str = "voice_chat",
+    user_profile: dict[str, str] | None = None,
 ) -> RealtimeSessionResult:
     """
     向 OpenAI 申请 Realtime client secret（ephemeral token）。
@@ -71,7 +72,7 @@ def create_realtime_session(
     logger.info("[RealtimeSession] session_id=%s", sid)
     logger.info("[RealtimeSession] model=%s voice=%s speed=%s", model, voice, speed)
 
-    instructions = build_realtime_instructions(character_id, sid)
+    instructions = build_realtime_instructions(character_id, sid, user_profile=user_profile)
     est_tokens = len(instructions) // 2  # 粗估，仅日志
     logger.info("[RealtimeSession] instructions_chars=%s est_tokens~%s", len(instructions), est_tokens)
 

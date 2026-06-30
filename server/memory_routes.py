@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from neuralpal.characters.constants import DEFAULT_CHARACTER_ID, DEFAULT_SESSION_ID
@@ -20,13 +20,14 @@ from neuralpal.memory.admin_service import (
     run_maintenance,
     summarize_tiers,
 )
+from server.auth_session import AuthSession, require_auth_session, session_id_for_username
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 class MaintenanceRequest(BaseModel):
     character_id: str | None = Field(default=None)
-    action: str = Field(..., description="daily | weekly | monthly | catchup")
+    action: str = Field(..., description="daily | weekly | monthly | yearly | catchup")
     dry_run: bool = False
 
 
@@ -152,14 +153,18 @@ async def memory_optimize_titles(
 
 def attach_memory_message_routes(router: APIRouter, chat_service: Any) -> None:
     @router.post("/memory/messages/delete")
-    async def memory_messages_delete(payload: DeleteMessagesRequest) -> dict[str, Any]:
+    async def memory_messages_delete(
+        payload: DeleteMessagesRequest,
+        session: AuthSession = Depends(require_auth_session),
+    ) -> dict[str, Any]:
         name = _character_name(payload.character_id)
         if not payload.indices:
             raise HTTPException(status_code=400, detail="请指定要删除的消息下标")
         try:
             if payload.session_id and not payload.rel_path:
+                own_sid = session_id_for_username(session.username)
                 result = chat_service.delete_live_messages(
-                    payload.session_id,
+                    own_sid,
                     payload.indices,
                     character_id=payload.character_id,
                 )
@@ -185,11 +190,20 @@ def attach_chat_admin_routes(router: APIRouter, chat_service: Any) -> None:
     """挂载聊天记录管理到同一 admin router。"""
 
     @router.get("/chat/history")
-    async def chat_history(session_id: str = DEFAULT_SESSION_ID) -> dict[str, Any]:
-        messages = chat_service.get_session_history(session_id)
-        return {"session_id": session_id, "messages": messages, "count": len(messages)}
+    async def chat_history(
+        session_id: str = DEFAULT_SESSION_ID,
+        session: AuthSession = Depends(require_auth_session),
+    ) -> dict[str, Any]:
+        del session_id
+        sid = session_id_for_username(session.username)
+        messages = chat_service.get_session_history(sid)
+        return {"session_id": sid, "messages": messages, "count": len(messages)}
 
     @router.delete("/chat/session")
-    async def chat_session_clear(session_id: str = DEFAULT_SESSION_ID) -> dict[str, bool]:
-        chat_service.reset_session(session_id)
+    async def chat_session_clear(
+        session_id: str = DEFAULT_SESSION_ID,
+        session: AuthSession = Depends(require_auth_session),
+    ) -> dict[str, bool]:
+        del session_id
+        chat_service.reset_session(session_id_for_username(session.username))
         return {"ok": True}

@@ -1,5 +1,6 @@
 import { API_BASE } from './chatApi'
 import { DEFAULT_CHARACTER_ID, DEFAULT_SESSION_ID } from './characterConfig'
+import { authHeaders } from './authSession'
 
 export type WorkModeSnapshot = {
   mode: 'work' | 'companion' | 'overtime'
@@ -25,7 +26,9 @@ export async function fetchWorkMode(
     session_id: sessionId,
     character_id: characterId,
   })
-  const resp = await fetch(`${API_BASE}/system/work-mode?${q}`)
+  const resp = await fetch(`${API_BASE}/system/work-mode?${q}`, {
+    headers: authHeaders(),
+  })
   if (!resp.ok) {
     throw new Error('无法加载上下班状态')
   }

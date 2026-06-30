@@ -5,9 +5,11 @@ import { SystemModalsShell } from '../components/system/SystemModalsShell'
 import { UserSessionProvider } from '../contexts/UserSessionContext'
 import { MacPermissionsProvider } from '../contexts/MacPermissionsContext'
 import { useAuth } from '../hooks/useAuth'
+import { useUserPersona } from '../hooks/useUserPersona'
 
 export default function App() {
   const auth = useAuth()
+  const userPersona = useUserPersona(auth.session)
   const [profileOpen, setProfileOpen] = useState(false)
 
   return (
@@ -16,11 +18,18 @@ export default function App() {
       <NeuralWakeup
         userName={auth.username ?? '访客'}
         authenticated={auth.isAuthenticated}
+        role={auth.role}
         loginError={auth.loginError}
         loggingIn={auth.loggingIn}
         onLogin={auth.login}
         onLogout={auth.logout}
         onOpenProfile={() => setProfileOpen(true)}
+        personaRequired={userPersona.required}
+        personaConfigured={userPersona.configured}
+        personaLoading={userPersona.loading}
+        personaSaving={userPersona.saving}
+        personaError={userPersona.error}
+        onSavePersona={userPersona.save}
       />
       <UserProfilePage
         open={profileOpen}

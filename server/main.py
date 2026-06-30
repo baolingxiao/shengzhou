@@ -38,13 +38,22 @@ from neuralpal.memory.admin_service import (
     serialize_messages,
 )
 from neuralpal.memory.character_palace import palace_paths_for_character_id
+from neuralpal.memory.user_palace import user_palace_paths
 from neuralpal.memory.memory_system import NeuralPalMemoryPalaceOrchestrator
 from server.auth import authenticate
+from server.auth_session import (
+    AuthSession,
+    issue_access_token,
+    require_auth_session,
+    require_developer_session,
+    session_id_for_username,
+)
 from server.memory_routes import attach_chat_admin_routes, attach_memory_message_routes, router as admin_router
 from server.trust_routes import router as trust_router
 from server.system_routes import router as system_router
 from server.shenzhou_bridge_auth import require_shenzhou_bridge_token
 from server.shenzhou_proxy import router as shenzhou_proxy_router
+from server.user_persona import get_user_persona, upsert_user_persona
 from server.trace_routes import router as trace_router
 from server.voice_service import VoiceService
 
@@ -78,6 +87,15 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=1)
 
 
+class UserPersonaRequest(BaseModel):
+    display_name: str = Field(..., min_length=1, max_length=40)
+    style_prompt: str = Field(..., min_length=1, max_length=4000)
+    chatgpt_api_key: str = Field(default="", max_length=300)
+    claude_api_key: str = Field(default="", max_length=300)
+    deepseek_api_key: str = Field(default="", max_length=300)
+    doubao_api_key: str = Field(default="", max_length=300)
+
+
 class CharacterInfo(BaseModel):
     id: str
     name: str
@@ -91,7 +109,7 @@ class ChatService:
         self._use_memory = bool(settings.local_web_use_memory_orchestrator)
         self._memory_orch: dict[str, NeuralPalMemoryPalaceOrchestrator] = {}
         self._basic_orch: dict[str, NeuralPalChatOrchestrator] = {}
-        self._orch_character: dict[str, str] = {}
+        self._orch_profile: dict[str, str] = {}
         self._lock = threading.Lock()
         self._maintenance_bootstrapped = False
 
@@ -105,29 +123,44 @@ class ChatService:
         self._maintenance_bootstrapped = True
         bootstrap_character_memory_maintenance(DEFAULT_CHARACTER_ID)
 
+    @staticmethod
+    def _profile_key(user: AuthSession, character_id: str) -> str:
+        if user.role == "user":
+            return f"user:{user.username}"
+        return f"developer:{character_id}"
+
     def _get_orchestrator(
         self,
         session_id: str,
         *,
+        user: AuthSession,
         character_id: str | None = None,
     ):
         sid = self._session(session_id)
         cid = (character_id or DEFAULT_CHARACTER_ID).strip()
-        self._bootstrap_maintenance_once()
+        if user.role == "developer":
+            self._bootstrap_maintenance_once()
 
-        if self._use_memory:
-            bound = self._orch_character.get(sid)
-            if sid in self._memory_orch and bound and bound != cid:
-                self._memory_orch.pop(sid, None)
+        profile_key = self._profile_key(user, cid)
+        bound = self._orch_profile.get(sid)
+        if bound and bound != profile_key:
+            self._memory_orch.pop(sid, None)
+            self._basic_orch.pop(sid, None)
+
+        # 普通用户固定使用记忆宫殿编排器（本地私有目录），避免回退到无记忆路径。
+        if self._use_memory or user.role == "user":
             if sid not in self._memory_orch:
-                palace_root, chroma_path, _ = palace_paths_for_character_id(cid)
+                if user.role == "user":
+                    palace_root, chroma_path = user_palace_paths(user.username)
+                else:
+                    palace_root, chroma_path, _ = palace_paths_for_character_id(cid)
                 self._memory_orch[sid] = NeuralPalMemoryPalaceOrchestrator(
                     verbose=False,
                     palace_root=palace_root,
                     chroma_path=chroma_path,
                     run_maintenance_on_init=False,
                 )
-                self._orch_character[sid] = cid
+                self._orch_profile[sid] = profile_key
             return self._memory_orch[sid]
 
         if sid not in self._basic_orch:
@@ -135,6 +168,7 @@ class ChatService:
                 verbose=False,
                 use_rules_layer_preamble=True,
             )
+            self._orch_profile[sid] = profile_key
         return self._basic_orch[sid]
 
     async def chat(
@@ -142,17 +176,33 @@ class ChatService:
         session_id: str,
         text: str,
         *,
+        user: AuthSession,
         character_id: str | None = None,
     ) -> ReplyPayload:
         cid = (character_id or DEFAULT_CHARACTER_ID).strip()
+        persona = get_user_persona(user.username) if user.role == "user" else None
         try:
             with self._lock:
-                orch = self._get_orchestrator(session_id, character_id=cid)
+                orch = self._get_orchestrator(session_id, user=user, character_id=cid)
+            call_kwargs: dict[str, object] = {
+                "session_id": self._session(session_id),
+                "character_id": None if user.role == "user" else cid,
+            }
+            if isinstance(orch, NeuralPalMemoryPalaceOrchestrator):
+                call_kwargs["runtime_user"] = (
+                    {
+                        "username": user.username,
+                        "role": user.role,
+                        "display_name": persona.display_name if persona else "",
+                        "style_prompt": persona.style_prompt if persona else "",
+                    }
+                    if user.role == "user"
+                    else None
+                )
             result = await asyncio.to_thread(
                 orch.chat_turn,
                 text.strip(),
-                session_id=self._session(session_id),
-                character_id=cid,
+                **call_kwargs,
             )
             blocked = bool(
                 getattr(result, "blocked_by_preflight", False)
@@ -181,7 +231,7 @@ class ChatService:
         with self._lock:
             self._memory_orch.pop(sid, None)
             self._basic_orch.pop(sid, None)
-            self._orch_character.pop(sid, None)
+            self._orch_profile.pop(sid, None)
 
     def get_session_history(self, session_id: str) -> list[dict[str, str]]:
         sid = self._session(session_id)
@@ -281,6 +331,68 @@ class ChatService:
             parsed = parse_memory_chat_messages(body)
             orch._short.chat_memory.messages = _to_langchain_messages(parsed)
 
+    def inject_assistant_message(
+        self,
+        session_id: str,
+        text: str,
+        *,
+        character_id: str | None = None,
+    ) -> dict[str, object]:
+        """向会话注入一条助手消息（用于主动外发场景）。"""
+        from langchain_core.messages import AIMessage
+        from neuralpal.memory.character_palace import palace_paths_for_character_id
+        from neuralpal.memory.memory_chat_edit import _to_langchain_messages, parse_memory_chat_messages
+        from neuralpal.memory.palace_layout import _safe_session_slug, path_short, sync_short_term_snapshot
+
+        sid = self._session(session_id)
+        content = (text or "").strip()
+        if not content:
+            raise ValueError("message is empty")
+        cid = (character_id or DEFAULT_CHARACTER_ID).strip()
+
+        with self._lock:
+            orch = self._memory_orch.get(sid)
+            if orch is not None and hasattr(orch, "_short"):
+                orch._short.chat_memory.messages.append(AIMessage(content=content))
+                rolled = list(getattr(orch, "_rolled_summaries", []) or [])
+                sync_short_term_snapshot(
+                    session_id=sid,
+                    messages=orch._short.chat_memory.messages,
+                    rolled_summaries=rolled or None,
+                    palace_root=orch._palace_root,
+                )
+                return {
+                    "ok": True,
+                    "session_id": sid,
+                    "in_memory": True,
+                    "rel_path": f"01_短期记忆/{_safe_session_slug(sid)}.md",
+                }
+            basic = self._basic_orch.get(sid)
+            if basic is not None and hasattr(basic, "_history"):
+                basic._history.append(AIMessage(content=content))
+
+        palace_root, _, _ = palace_paths_for_character_id(cid)
+        short_file = path_short(palace_root) / f"{_safe_session_slug(sid)}.md"
+        parsed: list[dict[str, str]] = []
+        if short_file.is_file():
+            try:
+                parsed = parse_memory_chat_messages(short_file.read_text(encoding="utf-8"))
+            except Exception:
+                parsed = []
+        messages = _to_langchain_messages(parsed)
+        messages.append(AIMessage(content=content))
+        sync_short_term_snapshot(
+            session_id=sid,
+            messages=messages,
+            palace_root=palace_root,
+        )
+        return {
+            "ok": True,
+            "session_id": sid,
+            "in_memory": False,
+            "rel_path": f"01_短期记忆/{_safe_session_slug(sid)}.md",
+        }
+
 
 app = FastAPI(title="贾维斯 Neural Pal Chat")
 _app_port = os.environ.get("NEURALPAL_BACKEND_PORT", "8766")
@@ -311,13 +423,29 @@ app.add_middleware(
 service = ChatService()
 voice_service = VoiceService()
 
+try:
+    from neuralpal.shenzhou.proactive import register_in_app_sender
+
+    def _shenzhou_in_app_sender(session_id: str, text: str, event: dict[str, object]) -> bool:
+        del event
+        try:
+            service.inject_assistant_message(session_id, text)
+            return True
+        except Exception:
+            logger.exception("shenzhou proactive in-app delivery failed")
+            return False
+
+    register_in_app_sender(_shenzhou_in_app_sender)
+except Exception:
+    logger.exception("failed to register shenzhou in-app sender")
+
 attach_chat_admin_routes(admin_router, service)
 attach_memory_message_routes(admin_router, service)
-app.include_router(admin_router)
+app.include_router(admin_router, dependencies=[Depends(require_developer_session)])
 app.include_router(trust_router)
 app.include_router(system_router)
 app.include_router(trace_router)
-app.include_router(shenzhou_proxy_router)
+app.include_router(shenzhou_proxy_router, dependencies=[Depends(require_developer_session)])
 
 
 @app.on_event("startup")
@@ -333,6 +461,7 @@ async def _startup_shenzhou_scheduler() -> None:
 @app.post("/api/shenzhou/sync-user-day")
 async def api_shenzhou_sync_user_day(
     session_id: str = DEFAULT_SESSION_ID,
+    _: AuthSession = Depends(require_developer_session),
 ) -> dict[str, object]:
     """手动触发：将今日用户对话同步到沈昼世界模型。"""
     from neuralpal.shenzhou.scheduler import job_sync_user_day
@@ -341,7 +470,9 @@ async def api_shenzhou_sync_user_day(
 
 
 @app.post("/api/shenzhou/pull-life-context")
-async def api_shenzhou_pull_life_context() -> dict[str, object]:
+async def api_shenzhou_pull_life_context(
+    _: AuthSession = Depends(require_developer_session),
+) -> dict[str, object]:
     """手动触发：从世界引擎拉取今日生活上下文并缓存。"""
     from neuralpal.shenzhou.scheduler import job_pull_life_context
 
@@ -352,6 +483,7 @@ async def api_shenzhou_pull_life_context() -> dict[str, object]:
 async def api_shenzhou_run_pipeline(
     skip_bulk_fix: bool = False,
     skip_simulation: bool = False,
+    _: AuthSession = Depends(require_developer_session),
 ) -> dict[str, object]:
     """手动触发：世界引擎每日流水线（背景优化 + 模拟）。"""
     from neuralpal.shenzhou.scheduler import job_world_daily_pipeline
@@ -362,12 +494,38 @@ async def api_shenzhou_run_pipeline(
     )
 
 
+@app.post("/api/shenzhou/proactive-run")
+async def api_shenzhou_proactive_run(
+    force: bool = False,
+    _: AuthSession = Depends(require_developer_session),
+) -> dict[str, object]:
+    """手动触发：根据事件时间窗口主动触达用户。"""
+    from neuralpal.shenzhou.scheduler import job_proactive_message
+
+    return job_proactive_message(force=force)
+
+
+@app.post("/api/shenzhou/archive-context")
+async def api_shenzhou_archive_context(
+    backfill: bool = False,
+    _: AuthSession = Depends(require_developer_session),
+) -> dict[str, object]:
+    """手动触发：压缩并归档 life_context（周/月/年）。"""
+    from neuralpal.shenzhou.scheduler import job_archive_life_context
+
+    return job_archive_life_context(backfill=backfill)
+
+
 @app.get("/api/shenzhou/status")
-async def api_shenzhou_status() -> dict[str, object]:
+async def api_shenzhou_status(
+    _: AuthSession = Depends(require_developer_session),
+) -> dict[str, object]:
     from neuralpal.config import get_settings
     from neuralpal.shenzhou.client import ping
+    from neuralpal.shenzhou.scheduler import scheduler_status
 
     s = get_settings()
+    sched = scheduler_status()
     world_url = s.shenzhou_world_api_url.strip()
     cache_only = s.shenzhou_integration_enabled and not world_url
     reachable = bool(world_url) and ping() if s.shenzhou_integration_enabled else False
@@ -384,12 +542,15 @@ async def api_shenzhou_status() -> dict[str, object]:
             "pull": f"{s.shenzhou_pull_hour:02d}:{s.shenzhou_pull_minute:02d}",
             "timezone": s.shenzhou_timezone,
         },
+        "proactive": sched.get("proactive"),
+        "context_archive": sched.get("context_archive"),
     }
 
 
 @app.get("/api/shenzhou/export-user-day")
 async def api_shenzhou_export_user_day(
     session_id: str = DEFAULT_SESSION_ID,
+    day: str | None = None,
     _: None = Depends(require_shenzhou_bridge_token),
 ) -> dict[str, object]:
     """本地桥接：导出云端今日对话，供写入本地世界模型。"""
@@ -399,9 +560,10 @@ async def api_shenzhou_export_user_day(
     from neuralpal.shenzhou.sync import collect_session_day_payload
 
     s = get_settings()
+    target = date.fromisoformat(day) if day else date.today()
     return collect_session_day_payload(
         session_id,
-        date.today(),
+        target,
         user_display_name=s.shenzhou_user_display_name,
     )
 
@@ -432,11 +594,92 @@ async def api_login(payload: LoginRequest) -> dict[str, object]:
     user = authenticate(payload.username, payload.password)
     if user is None:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
-    return {"ok": True, "username": user.username, "is_admin": user.is_admin}
+    token = issue_access_token(user)
+    return {
+        "ok": True,
+        "username": user.username,
+        "role": user.role,
+        "is_admin": user.is_admin,
+        "access_token": token,
+    }
+
+
+@app.get("/api/user/persona")
+async def api_get_user_persona(
+    session: AuthSession = Depends(require_auth_session),
+) -> dict[str, object]:
+    if session.role != "user":
+        return {"ok": True, "required": False, "configured": True, "persona": None}
+    persona = get_user_persona(session.username)
+    return {
+        "ok": True,
+        "required": True,
+        "configured": persona is not None,
+        "persona": (
+            {
+                "display_name": persona.display_name,
+                "style_prompt": persona.style_prompt,
+                "chatgpt_api_key": persona.chatgpt_api_key,
+                "claude_api_key": persona.claude_api_key,
+                "deepseek_api_key": persona.deepseek_api_key,
+                "doubao_api_key": persona.doubao_api_key,
+                "updated_at": persona.updated_at,
+            }
+            if persona
+            else None
+        ),
+    }
+
+
+@app.put("/api/user/persona")
+async def api_put_user_persona(
+    payload: UserPersonaRequest,
+    session: AuthSession = Depends(require_auth_session),
+) -> dict[str, object]:
+    if session.role != "user":
+        raise HTTPException(status_code=403, detail="仅普通用户可配置自定义角色")
+    try:
+        persona = upsert_user_persona(
+            session.username,
+            display_name=payload.display_name,
+            style_prompt=payload.style_prompt,
+            chatgpt_api_key=payload.chatgpt_api_key,
+            claude_api_key=payload.claude_api_key,
+            deepseek_api_key=payload.deepseek_api_key,
+            doubao_api_key=payload.doubao_api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "required": True,
+        "configured": True,
+        "persona": {
+            "display_name": persona.display_name,
+            "style_prompt": persona.style_prompt,
+            "chatgpt_api_key": persona.chatgpt_api_key,
+            "claude_api_key": persona.claude_api_key,
+            "deepseek_api_key": persona.deepseek_api_key,
+            "doubao_api_key": persona.doubao_api_key,
+            "updated_at": persona.updated_at,
+        },
+    }
 
 
 @app.get("/api/character", response_model=CharacterInfo)
-async def get_character(character_id: str = DEFAULT_CHARACTER_ID) -> CharacterInfo:
+async def get_character(
+    character_id: str = DEFAULT_CHARACTER_ID,
+    session: AuthSession = Depends(require_auth_session),
+) -> CharacterInfo:
+    if session.role == "user":
+        persona = get_user_persona(session.username)
+        display_name = persona.display_name if persona is not None else "我的 AI 助手"
+        return CharacterInfo(
+            id=f"user:{session.username}",
+            name=display_name,
+            ai_type="自定义角色",
+            user_mbti="N/A",
+        )
     char = get_character_store().get_character(character_id.strip())
     if not char:
         raise HTTPException(status_code=404, detail="角色不存在")
@@ -452,16 +695,22 @@ async def get_character(character_id: str = DEFAULT_CHARACTER_ID) -> CharacterIn
 async def api_chat(
     payload: ChatRequest,
     x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+    session: AuthSession = Depends(require_auth_session),
 ) -> dict[str, object]:
     from neuralpal.trace import ExecutionTraceRecorder, new_trace_id, trace_scope
 
+    sid = session_id_for_username(session.username)
+    if session.role == "user" and get_user_persona(session.username) is None:
+        raise HTTPException(status_code=409, detail="请先完成角色创建")
+
     trace_id = (payload.trace_id or x_trace_id or new_trace_id()).strip()
     cid = (payload.character_id or DEFAULT_CHARACTER_ID).strip()
+    trace_character_id = cid if session.role == "developer" else f"user:{session.username}"
     recorder = ExecutionTraceRecorder(
         trace_id,
         user_input=payload.text,
-        session_id=payload.session_id,
-        character_id=cid,
+        session_id=sid,
+        character_id=trace_character_id,
     )
     logger.info("[TRACE] %s", trace_id)
     recorder.record_backend_received()
@@ -469,8 +718,9 @@ async def api_chat(
     with trace_scope(recorder):
         try:
             result = await service.chat(
-                payload.session_id,
+                sid,
                 payload.text,
+                user=session,
                 character_id=payload.character_id,
             )
             resp = asdict(result)
@@ -527,8 +777,12 @@ async def api_debug_trace(payload: DebugTracePayload) -> dict[str, bool]:
 
 
 @app.post("/api/reset")
-async def api_reset(payload: ResetRequest | None = None) -> dict[str, bool]:
-    sid = payload.session_id if payload else DEFAULT_SESSION_ID
+async def api_reset(
+    payload: ResetRequest | None = None,
+    session: AuthSession = Depends(require_auth_session),
+) -> dict[str, bool]:
+    del payload
+    sid = session_id_for_username(session.username)
     service.reset_session(sid)
     return {"ok": True}
 
@@ -539,22 +793,25 @@ class AgentSessionRequest(BaseModel):
 
 
 @app.get("/api/agent/pending")
-async def api_agent_pending(session_id: str = DEFAULT_SESSION_ID) -> dict[str, object]:
+async def api_agent_pending(session: AuthSession = Depends(require_auth_session)) -> dict[str, object]:
     from neuralpal.tools.agent.pending import load_pending
 
-    pending = load_pending(session_id.strip())
+    pending = load_pending(session_id_for_username(session.username))
     if pending is None:
         return {"ok": True, "pending": None}
     return {"ok": True, "pending": pending.to_dict()}
 
 
 @app.post("/api/agent/confirm")
-async def api_agent_confirm(payload: AgentSessionRequest) -> dict[str, object]:
+async def api_agent_confirm(
+    payload: AgentSessionRequest,
+    session: AuthSession = Depends(require_auth_session),
+) -> dict[str, object]:
     from neuralpal.tools.agent.preprocess import preprocess_agent_turn
 
     pre = preprocess_agent_turn(
         "确认",
-        session_id=payload.session_id.strip(),
+        session_id=session_id_for_username(session.username),
         character_id=payload.character_id,
     )
     return {
@@ -567,10 +824,13 @@ async def api_agent_confirm(payload: AgentSessionRequest) -> dict[str, object]:
 
 
 @app.post("/api/agent/cancel")
-async def api_agent_cancel(payload: AgentSessionRequest) -> dict[str, object]:
+async def api_agent_cancel(
+    payload: AgentSessionRequest,
+    session: AuthSession = Depends(require_auth_session),
+) -> dict[str, object]:
     from neuralpal.tools.agent.pending import clear_pending, load_pending
 
-    sid = payload.session_id.strip()
+    sid = session_id_for_username(session.username)
     pending = load_pending(sid)
     if pending is None:
         return {"ok": True, "cancelled": False, "message": "无待取消任务"}
@@ -590,15 +850,33 @@ class RealtimeSessionRequest(BaseModel):
 
 
 @app.post("/api/realtime/session")
-async def api_realtime_session(payload: RealtimeSessionRequest) -> dict[str, object]:
+async def api_realtime_session(
+    payload: RealtimeSessionRequest,
+    session: AuthSession = Depends(require_auth_session),
+) -> dict[str, object]:
     from server.realtime_service import create_realtime_session
+
+    sid = session_id_for_username(session.username)
+    persona = get_user_persona(session.username) if session.role == "user" else None
+    if session.role == "user" and persona is None:
+        raise HTTPException(status_code=409, detail="请先完成角色创建")
 
     try:
         result = await asyncio.to_thread(
             create_realtime_session,
             character_id=payload.character_id,
-            session_id=payload.session_id,
+            session_id=sid,
             mode=payload.mode,
+            user_profile=(
+                {
+                    "username": session.username,
+                    "role": session.role,
+                    "display_name": persona.display_name if persona else "",
+                    "style_prompt": persona.style_prompt if persona else "",
+                }
+                if session.role == "user"
+                else None
+            ),
         )
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

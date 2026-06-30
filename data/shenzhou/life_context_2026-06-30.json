@@ -1,0 +1,249 @@
+{
+  "success": true,
+  "date": "2026-06-30",
+  "dailyState": null,
+  "lifeEvents": [],
+  "activeThreads": [
+    {
+      "id": "cmqtz7r0g0000xjityq8isztz",
+      "title": "董事会预算审核",
+      "category": "work",
+      "summary": "最近集团正在推进预算审核，沈昼负责会议材料和风险事项整理。",
+      "nextStep": "等梁总确认最终版本",
+      "importance": 85
+    },
+    {
+      "id": "cmqtz7r0k0001xjittulc3gxh",
+      "title": "琴叶榕养护",
+      "category": "personal",
+      "summary": "家里的琴叶榕状态不稳定，最近掉过叶子。",
+      "nextStep": "观察是否需要换位置",
+      "importance": 40
+    },
+    {
+      "id": "cmqtz7r0m0002xjit9scpt1c1",
+      "title": "建筑模型",
+      "category": "hobby",
+      "summary": "沈昼最近在拼一个街角咖啡店建筑模型。",
+      "nextStep": "完成二楼窗框部分",
+      "importance": 35
+    },
+    {
+      "id": "cmqtz7r0n0003xjit4kdn8f0e",
+      "title": "草莓牛奶新品",
+      "category": "daily",
+      "summary": "附近便利店上了新的草莓牛奶包装，沈昼还没试。",
+      "nextStep": "下次路过可以买一盒",
+      "importance": 20
+    }
+  ],
+  "memories": [
+    {
+      "id": "cmqtz7r0w0005xjit9g49t8xr",
+      "content": "徐静仪曾问：你是想做好助理，还是想做好管理者？",
+      "memoryType": "growth",
+      "importance": 75
+    },
+    {
+      "id": "cmqtz7r0u0004xjits608lmzw",
+      "content": "梁总说过，真正有价值的反对意见他会听。",
+      "memoryType": "work",
+      "importance": 70
+    },
+    {
+      "id": "cmqxbdpdx0056mvitrt6z3fei",
+      "content": "触发沈昼回忆此前徐静仪对自己的多次职业指导经历，加深了前辈关照自身职业发展的记忆",
+      "memoryType": "triggered",
+      "importance": 60
+    },
+    {
+      "id": "cmr06v94a0000ubitei6061fp",
+      "content": "[dai-jinxin] [user] trace smoke test\n[assistant] 收到\n这是什么项目的测试还是随手发的",
+      "memoryType": "user_interaction",
+      "importance": 55
+    },
+    {
+      "id": "cmqyo26sg002in4itdx6e1e00",
+      "content": "加深沈昼对徐静仪作为前辈关照自己职业发展的记忆，可触发过往受徐静仪指导经历的回忆",
+      "memoryType": "triggered",
+      "importance": 50
+    },
+    {
+      "id": "cmqxb9ck0001rmvitzdkd6p3u",
+      "content": "触发沈昼回忆此前徐静仪对自己工作上的指导经历",
+      "memoryType": "triggered",
+      "importance": 45
+    },
+    {
+      "id": "cmqtz7r0y0006xjitjjamvieq",
+      "content": "琴叶榕是搬新家时买的，当时叶子很精神。",
+      "memoryType": "personal",
+      "importance": 45
+    }
+  ],
+  "shareableEvents": [],
+  "shenzhouView": {
+    "date": "2026-06-30",
+    "dailyState": null,
+    "knownEvents": [],
+    "handledEvents": [],
+    "caredEvents": [],
+    "mentionableEvents": [],
+    "rememberedEvents": [
+      {
+        "id": "cmqtz7r0w0005xjit9g49t8xr",
+        "content": "徐静仪曾问：你是想做好助理，还是想做好管理者？",
+        "type": "growth",
+        "importance": 75
+      },
+      {
+        "id": "cmqtz7r0u0004xjits608lmzw",
+        "content": "梁总说过，真正有价值的反对意见他会听。",
+        "type": "work",
+        "importance": 70
+      },
+      {
+        "id": "cmqxbdpdx0056mvitrt6z3fei",
+        "content": "触发沈昼回忆此前徐静仪对自己的多次职业指导经历，加深了前辈关照自身职业发展的记忆",
+        "type": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmr06v94a0000ubitei6061fp",
+        "content": "[dai-jinxin] [user] trace smoke test\n[assistant] 收到\n这是什么项目的测试还是随手发的",
+        "type": "user_interaction",
+        "importance": 55
+      },
+      {
+        "id": "cmqyo26sg002in4itdx6e1e00",
+        "content": "加深沈昼对徐静仪作为前辈关照自己职业发展的记忆，可触发过往受徐静仪指导经历的回忆",
+        "type": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmqxb9ck0001rmvitzdkd6p3u",
+        "content": "触发沈昼回忆此前徐静仪对自己工作上的指导经历",
+        "type": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmqtz7r0y0006xjitjjamvieq",
+        "content": "琴叶榕是搬新家时买的，当时叶子很精神。",
+        "type": "personal",
+        "importance": 45
+      }
+    ],
+    "lifeEvents": [],
+    "activeThreads": [
+      {
+        "id": "cmqtz7r0g0000xjityq8isztz",
+        "title": "董事会预算审核",
+        "category": "work",
+        "summary": "最近集团正在推进预算审核，沈昼负责会议材料和风险事项整理。",
+        "nextStep": "等梁总确认最终版本",
+        "importance": 85
+      },
+      {
+        "id": "cmqtz7r0k0001xjittulc3gxh",
+        "title": "琴叶榕养护",
+        "category": "personal",
+        "summary": "家里的琴叶榕状态不稳定，最近掉过叶子。",
+        "nextStep": "观察是否需要换位置",
+        "importance": 40
+      },
+      {
+        "id": "cmqtz7r0m0002xjit9scpt1c1",
+        "title": "建筑模型",
+        "category": "hobby",
+        "summary": "沈昼最近在拼一个街角咖啡店建筑模型。",
+        "nextStep": "完成二楼窗框部分",
+        "importance": 35
+      },
+      {
+        "id": "cmqtz7r0n0003xjit4kdn8f0e",
+        "title": "草莓牛奶新品",
+        "category": "daily",
+        "summary": "附近便利店上了新的草莓牛奶包装，沈昼还没试。",
+        "nextStep": "下次路过可以买一盒",
+        "importance": 20
+      }
+    ],
+    "shareableEvents": [],
+    "memories": [
+      {
+        "id": "cmqtz7r0w0005xjit9g49t8xr",
+        "content": "徐静仪曾问：你是想做好助理，还是想做好管理者？",
+        "memoryType": "growth",
+        "importance": 75
+      },
+      {
+        "id": "cmqtz7r0u0004xjits608lmzw",
+        "content": "梁总说过，真正有价值的反对意见他会听。",
+        "memoryType": "work",
+        "importance": 70
+      },
+      {
+        "id": "cmqxbdpdx0056mvitrt6z3fei",
+        "content": "触发沈昼回忆此前徐静仪对自己的多次职业指导经历，加深了前辈关照自身职业发展的记忆",
+        "memoryType": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmr06v94a0000ubitei6061fp",
+        "content": "[dai-jinxin] [user] trace smoke test\n[assistant] 收到\n这是什么项目的测试还是随手发的",
+        "memoryType": "user_interaction",
+        "importance": 55
+      },
+      {
+        "id": "cmqyo26sg002in4itdx6e1e00",
+        "content": "加深沈昼对徐静仪作为前辈关照自己职业发展的记忆，可触发过往受徐静仪指导经历的回忆",
+        "memoryType": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmqxb9ck0001rmvitzdkd6p3u",
+        "content": "触发沈昼回忆此前徐静仪对自己工作上的指导经历",
+        "memoryType": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmqtz7r0y0006xjitjjamvieq",
+        "content": "琴叶榕是搬新家时买的，当时叶子很精神。",
+        "memoryType": "personal",
+        "importance": 45
+      }
+    ],
+    "visibleNodeIds": [
+      "cmqtzf79a000puhitb0t6r5n0",
+      "cmqtzf79d000ruhitenqwdnfk",
+      "cmqtzf79e000suhitzc976wxa",
+      "cmqtzf79c000quhitmspfwlyy",
+      "cmr06z1ia0012ubitwl7yggk2",
+      "cmr06z1ic0013ubitiidxkyy2",
+      "cmr06z1if0015ubiteuaxizde",
+      "cmr06z1ih0016ubitghj9b4oy",
+      "cmr06z1ij0017ubit5fw2nc1m",
+      "cmr06z1il0018ubits169w1c9"
+    ],
+    "visibleEdgeIds": [
+      "cmr070uzo001gubit58lt0rny",
+      "cmr070uzq001hubit8gu6pd9n",
+      "cmr070v0a001vubit8wshryxk",
+      "cmr070v0d001xubitqs39a3vf",
+      "cmr070v0e001yubitqxilfaja",
+      "cmr070v0g0020ubituu3jqn4j",
+      "cmr070v0i0021ubitkx94i4rx",
+      "cmr070v0m0025ubitbcrrt128",
+      "cmr070v0n0026ubitaxacupd7",
+      "cmr070v0o0027ubit83e1dska",
+      "cmr070v0p0028ubit3maln2tj",
+      "cmr070v0q0029ubitp2pktyow",
+      "cmr070v0r002aubitovhhe0mg",
+      "cmr070v0s002bubitr6jq5g55",
+      "cmr070v0u002dubitf2hb89mz",
+      "cmr070v0v002eubit0comacz1",
+      "cmr070v0x002fubitmw535s96",
+      "cmr070v0y002gubitzoknqsi4"
+    ]
+  }
+}

@@ -14,6 +14,7 @@ from neuralpal.memory.character_palace import palace_paths_for_character_id
 from neuralpal.memory.memory_maintenance import MemoryMaintenanceService
 from neuralpal.memory.memory_system import LongTermMemoryEngine
 from neuralpal.shenzhou.client import sync_user_day
+from neuralpal.shenzhou.event_sync import build_event_sync_digest, save_event_sync_digest
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,19 @@ def collect_session_day_payload(
 
     chat_lines = [f"[{m['role']}] {m['content']}" for m in messages[-40:]]
     chat_summary = "\n".join(chat_lines).strip() or daily_summary[:2000] or "今日无显著对话记录。"
+    event_digest = build_event_sync_digest(day, messages=messages[-60:])
+    try:
+        save_event_sync_digest(event_digest)
+    except Exception:
+        logger.debug("save event sync digest failed", exc_info=True)
+    digest_text = str(event_digest.get("summary_text") or "").strip()
+    if digest_text:
+        if daily_summary.strip():
+            daily_summary = f"{daily_summary.strip()}\n\n{digest_text}"
+        else:
+            daily_summary = digest_text
+        if digest_text not in chat_summary:
+            chat_summary = f"{chat_summary}\n\n{digest_text}"
 
     return {
         "date": day.isoformat(),

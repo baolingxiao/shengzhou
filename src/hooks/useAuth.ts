@@ -20,7 +20,9 @@ export function useAuth() {
       const next: AuthSession = {
         username: result.username,
         loggedInAt: Date.now(),
+        role: result.role === 'user' ? 'user' : 'developer',
         isAdmin: Boolean(result.is_admin),
+        accessToken: result.access_token,
       }
       writeAuthSession(next)
       setSession(next)
@@ -44,6 +46,7 @@ export function useAuth() {
     session,
     isAuthenticated: session !== null,
     username: session?.username ?? null,
+    role: session?.role ?? null,
     isAdmin: session?.isAdmin ?? false,
     login,
     logout,

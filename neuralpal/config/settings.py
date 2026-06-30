@@ -1295,6 +1295,78 @@ class Settings(BaseSettings):
         default=False,
         validation_alias="SHENZHOU_PROACTIVE_LIFE_CONTEXT",
     )
+    shenzhou_proactive_message_enabled: bool = Field(
+        default=True,
+        validation_alias="SHENZHOU_PROACTIVE_MESSAGE_ENABLED",
+    )
+    shenzhou_proactive_check_interval_minutes: int = Field(
+        default=5,
+        ge=1,
+        le=120,
+        validation_alias="SHENZHOU_PROACTIVE_CHECK_INTERVAL_MINUTES",
+    )
+    shenzhou_proactive_daily_max: int = Field(
+        default=3,
+        ge=0,
+        le=20,
+        validation_alias="SHENZHOU_PROACTIVE_DAILY_MAX",
+    )
+    shenzhou_proactive_event_cooldown_minutes: int = Field(
+        default=360,
+        ge=10,
+        le=10080,
+        validation_alias="SHENZHOU_PROACTIVE_EVENT_COOLDOWN_MINUTES",
+    )
+    shenzhou_proactive_lead_minutes: int = Field(
+        default=60,
+        ge=0,
+        le=720,
+        validation_alias="SHENZHOU_PROACTIVE_LEAD_MINUTES",
+    )
+    shenzhou_proactive_lag_minutes: int = Field(
+        default=120,
+        ge=0,
+        le=1440,
+        validation_alias="SHENZHOU_PROACTIVE_LAG_MINUTES",
+    )
+    shenzhou_proactive_quiet_start_hour: int = Field(
+        default=23,
+        ge=0,
+        le=23,
+        validation_alias="SHENZHOU_PROACTIVE_QUIET_START_HOUR",
+    )
+    shenzhou_proactive_quiet_end_hour: int = Field(
+        default=8,
+        ge=0,
+        le=23,
+        validation_alias="SHENZHOU_PROACTIVE_QUIET_END_HOUR",
+    )
+    shenzhou_proactive_channels: str = Field(
+        default="in_app",
+        validation_alias="SHENZHOU_PROACTIVE_CHANNELS",
+    )
+    shenzhou_proactive_session_id: str = Field(
+        default="",
+        validation_alias="SHENZHOU_PROACTIVE_SESSION_ID",
+    )
+    shenzhou_proactive_telegram_chat_id: str = Field(
+        default="",
+        validation_alias="SHENZHOU_PROACTIVE_TELEGRAM_CHAT_ID",
+    )
+    shenzhou_proactive_webhook_url: str = Field(
+        default="",
+        validation_alias="SHENZHOU_PROACTIVE_WEBHOOK_URL",
+    )
+    shenzhou_context_archive_enabled: bool = Field(
+        default=True,
+        validation_alias="SHENZHOU_CONTEXT_ARCHIVE_ENABLED",
+    )
+    shenzhou_context_keep_raw_days: int = Field(
+        default=14,
+        ge=1,
+        le=3650,
+        validation_alias="SHENZHOU_CONTEXT_KEEP_RAW_DAYS",
+    )
     shenzhou_cache_dir: Path = Field(
         default_factory=lambda: _project_root() / "data" / "shenzhou",
         validation_alias="SHENZHOU_CACHE_DIR",
@@ -1318,7 +1390,12 @@ class Settings(BaseSettings):
             return v
         return str(v).strip().lower() in ("1", "true", "yes", "on")
 
-    @field_validator("shenzhou_proactive_life_context", mode="before")
+    @field_validator(
+        "shenzhou_proactive_life_context",
+        "shenzhou_proactive_message_enabled",
+        "shenzhou_context_archive_enabled",
+        mode="before",
+    )
     @classmethod
     def _coerce_shenzhou_proactive(cls, v: Any) -> bool:
         if v is None or v == "":

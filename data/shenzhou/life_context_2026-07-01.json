@@ -1,0 +1,406 @@
+{
+  "success": true,
+  "date": "2026-07-01",
+  "dailyState": null,
+  "lifeEvents": [],
+  "activeThreads": [
+    {
+      "id": "cmqtz7r0g0000xjityq8isztz",
+      "title": "董事会预算审核",
+      "category": "work",
+      "summary": "最近集团正在推进预算审核，沈昼负责会议材料和风险事项整理。\n[2026-06-30] 唐梨: 提交预算终会会议纪要\n[2026-06-30] 梁总: 确认预算最终材料签字提交\n[2026-06-30] 唐梨: 提交预算终会会议纪要\n[2026-06-30] 梁总: 确认预算最终材料签字提交\n[2026-06-30] 唐梨: 提交预算终会会议纪要\n[2026-06-30] 梁总: 确认预算最终材料签字提交",
+      "nextStep": "等梁总确认最终版本",
+      "importance": 85
+    },
+    {
+      "id": "cmqtz7r0k0001xjittulc3gxh",
+      "title": "琴叶榕养护",
+      "category": "personal",
+      "summary": "家里的琴叶榕状态不稳定，最近掉过叶子。",
+      "nextStep": "观察是否需要换位置",
+      "importance": 40
+    },
+    {
+      "id": "cmqtz7r0m0002xjit9scpt1c1",
+      "title": "建筑模型",
+      "category": "hobby",
+      "summary": "沈昼最近在拼一个街角咖啡店建筑模型。",
+      "nextStep": "完成二楼窗框部分",
+      "importance": 35
+    },
+    {
+      "id": "cmqtz7r0n0003xjit4kdn8f0e",
+      "title": "草莓牛奶新品",
+      "category": "daily",
+      "summary": "附近便利店上了新的草莓牛奶包装，沈昼还没试。",
+      "nextStep": "下次路过可以买一盒",
+      "importance": 20
+    }
+  ],
+  "memories": [
+    {
+      "id": "cmqtz7r0w0005xjit9g49t8xr",
+      "content": "徐静仪曾问：你是想做好助理，还是想做好管理者？",
+      "memoryType": "growth",
+      "importance": 75
+    },
+    {
+      "id": "cmqtz7r0u0004xjits608lmzw",
+      "content": "梁总说过，真正有价值的反对意见他会听。",
+      "memoryType": "work",
+      "importance": 70
+    },
+    {
+      "id": "cmr0a92r1000iyqit5p5klrex",
+      "content": "触发沈昼此前和周妍提过本周预算收尾、喜欢喝手冲咖啡的相关记忆",
+      "memoryType": "triggered",
+      "importance": 65
+    },
+    {
+      "id": "cmr0ahcq1005hyqiti8efa1wd",
+      "content": "触发沈昼此前向周妍提及本周预算收尾、喜欢手冲咖啡的相关记忆",
+      "memoryType": "triggered",
+      "importance": 60
+    },
+    {
+      "id": "cmqxbdpdx0056mvitrt6z3fei",
+      "content": "触发沈昼回忆此前徐静仪对自己的多次职业指导经历，加深了前辈关照自身职业发展的记忆",
+      "memoryType": "triggered",
+      "importance": 60
+    },
+    {
+      "id": "cmr0a92se000xyqitgm6kp303",
+      "content": "新增本次徐静仪邀请做半年度复盘的事件记忆，沈昼感受到前辈对自己职业发展的重视与指导",
+      "memoryType": "triggered",
+      "importance": 60
+    },
+    {
+      "id": "cmr0u1dlj006fyqitsqget5kx",
+      "content": "[dai-jinxin] [user] 最近播怎么样 你好不好啊\n[assistant] 还不错没出什么大乱子算是平稳你呢～最近怎么样\n感觉好久没认真聊了",
+      "memoryType": "user_interaction",
+      "importance": 55
+    },
+    {
+      "id": "cmr073l0z002kubit8z3vvfec",
+      "content": "触发沈昼此前向周妍提及本周预算收尾工作的相关记忆",
+      "memoryType": "triggered",
+      "importance": 50
+    },
+    {
+      "id": "cmqyo26sg002in4itdx6e1e00",
+      "content": "加深沈昼对徐静仪作为前辈关照自己职业发展的记忆，可触发过往受徐静仪指导经历的回忆",
+      "memoryType": "triggered",
+      "importance": 50
+    },
+    {
+      "id": "cmr073l1u002xubitlmuuw5z8",
+      "content": "唤起沈昼对06-28戴金鑫提及要整理实习资料请教一事的关联记忆",
+      "memoryType": "triggered",
+      "importance": 50
+    },
+    {
+      "id": "cmr0ahcsa0060yqitom4149eu",
+      "content": "强化沈昼对戴金鑫求职筹备进程的记忆，可触发沈昼对自身过往实习申请经历的回忆",
+      "memoryType": "triggered",
+      "importance": 45
+    },
+    {
+      "id": "cmqtz7r0y0006xjitjjamvieq",
+      "content": "琴叶榕是搬新家时买的，当时叶子很精神。",
+      "memoryType": "personal",
+      "importance": 45
+    },
+    {
+      "id": "cmqxb9ck0001rmvitzdkd6p3u",
+      "content": "触发沈昼回忆此前徐静仪对自己工作上的指导经历",
+      "memoryType": "triggered",
+      "importance": 45
+    },
+    {
+      "id": "cmr0ahcrp005vyqitccbdgwij",
+      "content": "触发沈昼回顾梳理自身上半年工作成果、工作习惯以及职业发展方向相关的记忆",
+      "memoryType": "triggered",
+      "importance": 45
+    },
+    {
+      "id": "cmr0a92sz0014yqitih4bc223",
+      "content": "唤醒06-28戴金鑫告知将整理实习资料请教的相关记忆",
+      "memoryType": "triggered",
+      "importance": 40
+    }
+  ],
+  "shareableEvents": [],
+  "shenzhouView": {
+    "date": "2026-07-01",
+    "dailyState": null,
+    "knownEvents": [],
+    "handledEvents": [],
+    "caredEvents": [],
+    "mentionableEvents": [],
+    "rememberedEvents": [
+      {
+        "id": "cmqtz7r0w0005xjit9g49t8xr",
+        "content": "徐静仪曾问：你是想做好助理，还是想做好管理者？",
+        "type": "growth",
+        "importance": 75
+      },
+      {
+        "id": "cmqtz7r0u0004xjits608lmzw",
+        "content": "梁总说过，真正有价值的反对意见他会听。",
+        "type": "work",
+        "importance": 70
+      },
+      {
+        "id": "cmr0a92r1000iyqit5p5klrex",
+        "content": "触发沈昼此前和周妍提过本周预算收尾、喜欢喝手冲咖啡的相关记忆",
+        "type": "triggered",
+        "importance": 65
+      },
+      {
+        "id": "cmr0ahcq1005hyqiti8efa1wd",
+        "content": "触发沈昼此前向周妍提及本周预算收尾、喜欢手冲咖啡的相关记忆",
+        "type": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmqxbdpdx0056mvitrt6z3fei",
+        "content": "触发沈昼回忆此前徐静仪对自己的多次职业指导经历，加深了前辈关照自身职业发展的记忆",
+        "type": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmr0a92se000xyqitgm6kp303",
+        "content": "新增本次徐静仪邀请做半年度复盘的事件记忆，沈昼感受到前辈对自己职业发展的重视与指导",
+        "type": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmr0u1dlj006fyqitsqget5kx",
+        "content": "[dai-jinxin] [user] 最近播怎么样 你好不好啊\n[assistant] 还不错没出什么大乱子算是平稳你呢～最近怎么样\n感觉好久没认真聊了",
+        "type": "user_interaction",
+        "importance": 55
+      },
+      {
+        "id": "cmr073l0z002kubit8z3vvfec",
+        "content": "触发沈昼此前向周妍提及本周预算收尾工作的相关记忆",
+        "type": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmqyo26sg002in4itdx6e1e00",
+        "content": "加深沈昼对徐静仪作为前辈关照自己职业发展的记忆，可触发过往受徐静仪指导经历的回忆",
+        "type": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmr073l1u002xubitlmuuw5z8",
+        "content": "唤起沈昼对06-28戴金鑫提及要整理实习资料请教一事的关联记忆",
+        "type": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmr0ahcsa0060yqitom4149eu",
+        "content": "强化沈昼对戴金鑫求职筹备进程的记忆，可触发沈昼对自身过往实习申请经历的回忆",
+        "type": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmqtz7r0y0006xjitjjamvieq",
+        "content": "琴叶榕是搬新家时买的，当时叶子很精神。",
+        "type": "personal",
+        "importance": 45
+      },
+      {
+        "id": "cmqxb9ck0001rmvitzdkd6p3u",
+        "content": "触发沈昼回忆此前徐静仪对自己工作上的指导经历",
+        "type": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmr0ahcrp005vyqitccbdgwij",
+        "content": "触发沈昼回顾梳理自身上半年工作成果、工作习惯以及职业发展方向相关的记忆",
+        "type": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmr0a92sz0014yqitih4bc223",
+        "content": "唤醒06-28戴金鑫告知将整理实习资料请教的相关记忆",
+        "type": "triggered",
+        "importance": 40
+      }
+    ],
+    "lifeEvents": [],
+    "activeThreads": [
+      {
+        "id": "cmqtz7r0g0000xjityq8isztz",
+        "title": "董事会预算审核",
+        "category": "work",
+        "summary": "最近集团正在推进预算审核，沈昼负责会议材料和风险事项整理。\n[2026-06-30] 唐梨: 提交预算终会会议纪要\n[2026-06-30] 梁总: 确认预算最终材料签字提交\n[2026-06-30] 唐梨: 提交预算终会会议纪要\n[2026-06-30] 梁总: 确认预算最终材料签字提交\n[2026-06-30] 唐梨: 提交预算终会会议纪要\n[2026-06-30] 梁总: 确认预算最终材料签字提交",
+        "nextStep": "等梁总确认最终版本",
+        "importance": 85
+      },
+      {
+        "id": "cmqtz7r0k0001xjittulc3gxh",
+        "title": "琴叶榕养护",
+        "category": "personal",
+        "summary": "家里的琴叶榕状态不稳定，最近掉过叶子。",
+        "nextStep": "观察是否需要换位置",
+        "importance": 40
+      },
+      {
+        "id": "cmqtz7r0m0002xjit9scpt1c1",
+        "title": "建筑模型",
+        "category": "hobby",
+        "summary": "沈昼最近在拼一个街角咖啡店建筑模型。",
+        "nextStep": "完成二楼窗框部分",
+        "importance": 35
+      },
+      {
+        "id": "cmqtz7r0n0003xjit4kdn8f0e",
+        "title": "草莓牛奶新品",
+        "category": "daily",
+        "summary": "附近便利店上了新的草莓牛奶包装，沈昼还没试。",
+        "nextStep": "下次路过可以买一盒",
+        "importance": 20
+      }
+    ],
+    "shareableEvents": [],
+    "memories": [
+      {
+        "id": "cmqtz7r0w0005xjit9g49t8xr",
+        "content": "徐静仪曾问：你是想做好助理，还是想做好管理者？",
+        "memoryType": "growth",
+        "importance": 75
+      },
+      {
+        "id": "cmqtz7r0u0004xjits608lmzw",
+        "content": "梁总说过，真正有价值的反对意见他会听。",
+        "memoryType": "work",
+        "importance": 70
+      },
+      {
+        "id": "cmr0a92r1000iyqit5p5klrex",
+        "content": "触发沈昼此前和周妍提过本周预算收尾、喜欢喝手冲咖啡的相关记忆",
+        "memoryType": "triggered",
+        "importance": 65
+      },
+      {
+        "id": "cmr0ahcq1005hyqiti8efa1wd",
+        "content": "触发沈昼此前向周妍提及本周预算收尾、喜欢手冲咖啡的相关记忆",
+        "memoryType": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmqxbdpdx0056mvitrt6z3fei",
+        "content": "触发沈昼回忆此前徐静仪对自己的多次职业指导经历，加深了前辈关照自身职业发展的记忆",
+        "memoryType": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmr0a92se000xyqitgm6kp303",
+        "content": "新增本次徐静仪邀请做半年度复盘的事件记忆，沈昼感受到前辈对自己职业发展的重视与指导",
+        "memoryType": "triggered",
+        "importance": 60
+      },
+      {
+        "id": "cmr0u1dlj006fyqitsqget5kx",
+        "content": "[dai-jinxin] [user] 最近播怎么样 你好不好啊\n[assistant] 还不错没出什么大乱子算是平稳你呢～最近怎么样\n感觉好久没认真聊了",
+        "memoryType": "user_interaction",
+        "importance": 55
+      },
+      {
+        "id": "cmr073l0z002kubit8z3vvfec",
+        "content": "触发沈昼此前向周妍提及本周预算收尾工作的相关记忆",
+        "memoryType": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmqyo26sg002in4itdx6e1e00",
+        "content": "加深沈昼对徐静仪作为前辈关照自己职业发展的记忆，可触发过往受徐静仪指导经历的回忆",
+        "memoryType": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmr073l1u002xubitlmuuw5z8",
+        "content": "唤起沈昼对06-28戴金鑫提及要整理实习资料请教一事的关联记忆",
+        "memoryType": "triggered",
+        "importance": 50
+      },
+      {
+        "id": "cmr0ahcsa0060yqitom4149eu",
+        "content": "强化沈昼对戴金鑫求职筹备进程的记忆，可触发沈昼对自身过往实习申请经历的回忆",
+        "memoryType": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmqtz7r0y0006xjitjjamvieq",
+        "content": "琴叶榕是搬新家时买的，当时叶子很精神。",
+        "memoryType": "personal",
+        "importance": 45
+      },
+      {
+        "id": "cmqxb9ck0001rmvitzdkd6p3u",
+        "content": "触发沈昼回忆此前徐静仪对自己工作上的指导经历",
+        "memoryType": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmr0ahcrp005vyqitccbdgwij",
+        "content": "触发沈昼回顾梳理自身上半年工作成果、工作习惯以及职业发展方向相关的记忆",
+        "memoryType": "triggered",
+        "importance": 45
+      },
+      {
+        "id": "cmr0a92sz0014yqitih4bc223",
+        "content": "唤醒06-28戴金鑫告知将整理实习资料请教的相关记忆",
+        "memoryType": "triggered",
+        "importance": 40
+      }
+    ],
+    "visibleNodeIds": [
+      "cmqtzf79a000puhitb0t6r5n0",
+      "cmqtzf79d000ruhitenqwdnfk",
+      "cmqtzf79e000suhitzc976wxa",
+      "cmqtzf79c000quhitmspfwlyy",
+      "cmr0uj6v20088yqitgtcqzv3e",
+      "cmr0uj6ux0084yqittpdmf32f",
+      "cmr0uj6uz0085yqitrr102wso",
+      "cmr0uj6v00086yqitulr66fk1",
+      "cmr0uj6v40089yqit3vfkr4nw",
+      "cmr0uj6v6008ayqit0cvzdala",
+      "cmr0uj6v7008byqitazh7nc9f",
+      "cmr0uj6v8008cyqitrknfo44y"
+    ],
+    "visibleEdgeIds": [
+      "cmr0ujypy008oyqit0aa9y04f",
+      "cmr0ujyq3008qyqit2u5sj9fa",
+      "cmr0ujyq5008ryqit6zy9zy0v",
+      "cmr0ujyq9008syqitw7jvg1if",
+      "cmr0ujyqu0090yqit8igayq1v",
+      "cmr0ujyr40095yqithh4ethpi",
+      "cmr0ujyrs009kyqit9ek4akx0",
+      "cmr0ujyrt009lyqitsfruzcrs",
+      "cmr0ujyrv009myqit4wm7eelt",
+      "cmr0ujyrx009nyqituqnkgmn9",
+      "cmr0ujys2009qyqiteb4bntbz",
+      "cmr0ujys4009ryqithr1fku3i",
+      "cmr0ujys6009syqitde2o8dv5",
+      "cmr0ujys7009tyqitr12jrprl",
+      "cmr0ujys9009uyqit2npw0cbt",
+      "cmr0ujysa009vyqit9jq3c5dr",
+      "cmr0ujysb009wyqitxg9p8m66",
+      "cmr0ujyse009yyqitbsf8v5oh",
+      "cmr0ujysm00a3yqitc67a6qzv",
+      "cmr0ujysn00a4yqitrbg2t8la",
+      "cmr0ujysp00a5yqitc7dgvlgi",
+      "cmr0ujysq00a6yqit8bzpjyb6",
+      "cmr0ujyss00a7yqitdsv075il",
+      "cmr0ujysw00a9yqit1atfmnyx",
+      "cmr0ujysz00aayqit62okgxy2",
+      "cmr0ujyt000abyqityuvqmq66",
+      "cmr0ujyt200acyqita4bs5ca2",
+      "cmr0ujyt300adyqitqpkcerte",
+      "cmr0ujyt500afyqit5s6e8rnj"
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { API_BASE } from './chatApi'
 import { DEFAULT_CHARACTER_ID, DEFAULT_SESSION_ID } from './characterConfig'
+import { authHeaders } from './authSession'
 
 export type MemoryTier = 'short' | 'medium' | 'long'
 
@@ -24,10 +25,10 @@ export type ChatHistoryMessage = {
 async function adminJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: {
+    headers: authHeaders({
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
-    },
+    }),
   })
   if (!res.ok) {
     const detail = await res.text()

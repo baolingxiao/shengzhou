@@ -142,6 +142,24 @@ class MemoryMaintenanceTests(unittest.TestCase):
         svc.run_startup_catchup(now=now)
         self.assertTrue((self.root / "03_长期记忆" / f"monthly_summary_{mk}.md").exists())
 
+    def test_yearly_rollup_and_cleanup_long_term(self) -> None:
+        yk = "2025"
+        m1 = self.root / "03_长期记忆" / "monthly_summary_2025-01.md"
+        m2 = self.root / "03_长期记忆" / "monthly_summary_2025-02.md"
+        w1 = self.root / "03_长期记忆" / "weekly_summary_2025-W05.md"
+        for p in (m1, m2, w1):
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("# 月/周总结\n\n- 推进长期项目", encoding="utf-8")
+        svc = MemoryMaintenanceService(root=self.root, long_term_engine=_FakeLTSuccess())
+        gen = svc.generate_yearly_summary(yk)
+        self.assertTrue(gen.ok)
+        self.assertTrue((self.root / "03_长期记忆" / f"yearly_summary_{yk}.md").exists())
+        cln = svc.cleanup_long_term_for_year(yk)
+        self.assertEqual(cln.status, "archived")
+        self.assertFalse(m1.exists())
+        self.assertFalse(w1.exists())
+        self.assertTrue((self.root / "03_长期记忆" / "_archive" / "yearly" / yk / m2.name).exists())
+
     def test_dry_run_does_not_move_or_delete(self) -> None:
         d = date.today() - timedelta(days=1)
         sf = self._mk_short_file(d, "dry.md")

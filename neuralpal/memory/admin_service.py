@@ -141,6 +141,8 @@ def run_maintenance(
         result = svc.run_weekly_maintenance(now=now, dry_run=dry_run)
     elif action == "monthly":
         result = svc.run_monthly_maintenance(now=now, dry_run=dry_run)
+    elif action == "yearly":
+        result = svc.run_yearly_maintenance(now=now, dry_run=dry_run)
     elif action == "catchup":
         result = svc.run_startup_catchup(now=now, dry_run=dry_run)
     else:
@@ -233,5 +235,5 @@ def default_maintenance_hint() -> str:
     yesterday = date.today() - timedelta(days=1)
     return (
         f"日结：汇总 {yesterday.isoformat()} 短期记忆并归档；"
-        "周结/月结：rollup 中期摘要到长期并清理旧文件。"
+        "周结/月结/年结：逐层 rollup 到长期并清理旧文件。"
     )

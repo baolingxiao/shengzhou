@@ -60,9 +60,13 @@ class MemoryMaintenanceService:
             "monthly_generated": [],
             "monthly_chroma_indexed": [],
             "middle_term_archived": [],
+            "yearly_generated": [],
+            "yearly_chroma_indexed": [],
+            "long_term_yearly_archived": [],
             "last_daily_maintenance_date": "",
             "last_weekly_maintenance_week": "",
             "last_monthly_maintenance_month": "",
+            "last_yearly_maintenance_year": "",
         }
 
     def _load_state(self) -> dict[str, Any]:
@@ -115,6 +119,9 @@ class MemoryMaintenanceService:
 
     def _monthly_summary_path(self, month_key: str) -> Path:
         return self._long_dir / f"monthly_summary_{month_key}.md"
+
+    def _yearly_summary_path(self, year_key: str) -> Path:
+        return self._long_dir / f"yearly_summary_{year_key}.md"
 
     def _iter_short_files_for_date(self, d: date) -> list[Path]:
         if not self._short_dir.is_dir():
@@ -228,6 +235,25 @@ class MemoryMaintenanceService:
             + "\n\n## 需要未来持续记住的事实\n"
             + "\n".join(f"- {x}" for x in sec["facts_to_remember"])
             + "\n\n## 不建议长期保存的短期情绪或临时事件\n"
+            + "\n".join(f"- {x}" for x in sec["not_recommended"])
+            + "\n"
+        )
+
+    def _render_yearly_summary(self, year_key: str, texts: list[str]) -> str:
+        sec = self._extract_sections(texts, monthly=True)
+        return (
+            f"# 年度记忆总结 {year_key}\n\n"
+            "## 年度稳定偏好\n"
+            + "\n".join(f"- {x}" for x in sec["stable_prefs"])
+            + "\n\n## 年度项目主线进展\n"
+            + "\n".join(f"- {x}" for x in sec["project_progress"])
+            + "\n\n## 长期目标演化\n"
+            + "\n".join(f"- {x}" for x in sec["long_term_goal_changes"])
+            + "\n\n## 年度关键实体与关系\n"
+            + "\n".join(f"- {x}" for x in sec["important_entities"])
+            + "\n\n## 需要跨年保留的事实\n"
+            + "\n".join(f"- {x}" for x in sec["facts_to_remember"])
+            + "\n\n## 应持续剔除的短时信息\n"
             + "\n".join(f"- {x}" for x in sec["not_recommended"])
             + "\n"
         )
@@ -587,6 +613,110 @@ class MemoryMaintenanceService:
         logger.info("[maintenance] middle cleanup %s moved=%d dry_run=%s", mk, moved, dry_run)
         return MaintenanceResult(True, "archived", archive_dir, f"moved={moved}")
 
+    def _iter_long_monthly_files_for_year(self, year_key: str) -> list[Path]:
+        if not self._long_dir.is_dir():
+            return []
+        return sorted([p for p in self._long_dir.glob(f"monthly_summary_{year_key}-*.md") if p.is_file()])
+
+    def _iter_long_weekly_files_for_year(self, year_key: str) -> list[Path]:
+        if not self._long_dir.is_dir():
+            return []
+        return sorted([p for p in self._long_dir.glob(f"weekly_summary_{year_key}-W*.md") if p.is_file()])
+
+    def generate_yearly_summary(
+        self,
+        year: str,
+        *,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> MaintenanceResult:
+        yk = str(year).strip()
+        state = self._load_state()
+        out = self._yearly_summary_path(yk)
+
+        if out.exists() and not force and yk in state.get("yearly_generated", []):
+            logger.info("[maintenance] yearly %s skipped (exists)", yk)
+            return MaintenanceResult(True, "skipped_exists", out)
+
+        monthly_files = self._iter_long_monthly_files_for_year(yk)
+        if not monthly_files:
+            logger.info("[maintenance] yearly %s skipped (no monthly summaries)", yk)
+            return MaintenanceResult(True, "skipped_no_monthly")
+
+        texts: list[str] = []
+        for p in monthly_files:
+            try:
+                texts.append(p.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                continue
+        if not "".join(texts).strip():
+            logger.info("[maintenance] yearly %s skipped (empty monthly content)", yk)
+            return MaintenanceResult(True, "skipped_no_monthly")
+
+        body = self._render_yearly_summary(yk, texts)
+        if not dry_run:
+            try:
+                self._atomic_write_text(out, body)
+                publish_palace_file(out)
+            except Exception as exc:
+                logger.exception("[maintenance] yearly %s write failed: %s", yk, exc)
+                return MaintenanceResult(False, "failed_write", out, str(exc))
+
+        chroma_ok = self._index_monthly_to_chroma(
+            month_key=yk,
+            text=body,
+            file_path=out,
+            dry_run=dry_run,
+        )
+        if not chroma_ok:
+            logger.warning("[maintenance] yearly %s generated but chroma not indexed", yk)
+            return MaintenanceResult(False, "failed_chroma", out, "yearly file exists but chroma failed")
+
+        if not dry_run:
+            if yk not in state["yearly_generated"]:
+                state["yearly_generated"].append(yk)
+            if yk not in state["yearly_chroma_indexed"]:
+                state["yearly_chroma_indexed"].append(yk)
+            self._save_state(state, dry_run=False)
+        logger.info("[maintenance] yearly %s generated path=%s dry_run=%s", yk, out, dry_run)
+        return MaintenanceResult(True, "generated", out)
+
+    def cleanup_long_term_for_year(self, year: str, *, dry_run: bool = False) -> MaintenanceResult:
+        yk = str(year).strip()
+        state = self._load_state()
+        out = self._yearly_summary_path(yk)
+        if not out.exists() or yk not in state.get("yearly_chroma_indexed", []):
+            logger.info("[maintenance] long cleanup %s skipped (yearly/chroma not ready)", yk)
+            return MaintenanceResult(True, "skipped_yearly_not_ready")
+
+        monthly_files = self._iter_long_monthly_files_for_year(yk)
+        weekly_files = self._iter_long_weekly_files_for_year(yk)
+        files = monthly_files + weekly_files
+        if not files:
+            logger.info("[maintenance] long cleanup %s skipped (no monthly/weekly files)", yk)
+            return MaintenanceResult(True, "skipped_no_files")
+
+        archive_dir = self._long_dir / "_archive" / "yearly" / yk
+        moved = 0
+        for p in files:
+            dst = archive_dir / p.name
+            if dry_run:
+                moved += 1
+                continue
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                dst = archive_dir / f"{p.stem}_{int(time.time())}{p.suffix}"
+            p.replace(dst)
+            publish_palace_file(dst)
+            moved += 1
+
+        if not dry_run:
+            if yk not in state["long_term_yearly_archived"]:
+                state["long_term_yearly_archived"].append(yk)
+            self._save_state(state, dry_run=False)
+        logger.info("[maintenance] long cleanup %s moved=%d dry_run=%s", yk, moved, dry_run)
+        return MaintenanceResult(True, "archived", archive_dir, f"moved={moved}")
+
     # ---------- runners ----------
     def run_daily_maintenance(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, Any]:
         n = now or datetime.now()
@@ -625,12 +755,24 @@ class MemoryMaintenanceService:
             self._save_state(state, dry_run=False)
         return {"week": wk, "generate": gen.status, "cleanup": cln.status}
 
+    def run_yearly_maintenance(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, Any]:
+        n = now or datetime.now()
+        yk = str(n.year - 1)
+        gen = self.generate_yearly_summary(yk, force=False, dry_run=dry_run)
+        cln = self.cleanup_long_term_for_year(yk, dry_run=dry_run)
+        state = self._load_state()
+        if not dry_run:
+            state["last_yearly_maintenance_year"] = yk
+            self._save_state(state, dry_run=False)
+        return {"year": yk, "generate": gen.status, "cleanup": cln.status}
+
     def run_startup_catchup(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, Any]:
         n = now or datetime.now()
         daily = self.run_daily_maintenance(now=n, dry_run=dry_run)
         weekly = self.run_weekly_maintenance(now=n, dry_run=dry_run)
         monthly = self.run_monthly_maintenance(now=n, dry_run=dry_run)
-        return {"daily": daily, "weekly": weekly, "monthly": monthly}
+        yearly = self.run_yearly_maintenance(now=n, dry_run=dry_run)
+        return {"daily": daily, "weekly": weekly, "monthly": monthly, "yearly": yearly}
 
     # ---------- background scheduler ----------
     @classmethod
@@ -656,6 +798,7 @@ class MemoryMaintenanceService:
                         self.run_daily_maintenance(now=now, dry_run=dry_run)
                         self.run_weekly_maintenance(now=now, dry_run=dry_run)
                         self.run_monthly_maintenance(now=now, dry_run=dry_run)
+                        self.run_yearly_maintenance(now=now, dry_run=dry_run)
                     except Exception:
                         logger.exception("[maintenance] background scheduler tick failed")
                     self.__class__._stop_event.wait(interval_seconds)

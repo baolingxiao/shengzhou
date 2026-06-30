@@ -16,7 +16,11 @@ AUTH_USERS_PATH = ROOT / "data" / "auth_users.json"
 @dataclass(frozen=True)
 class AuthUser:
     username: str
-    is_admin: bool
+    role: str = "user"
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role in {"admin", "developer"}
 
 
 def _admin_credentials() -> tuple[str, str]:
@@ -24,6 +28,13 @@ def _admin_credentials() -> tuple[str, str]:
         os.getenv("JARVIS_AUTH_USER", "admin").strip(),
         os.getenv("JARVIS_AUTH_PASSWORD", "jarvis"),
     )
+
+
+def _normalize_role(raw: object) -> str:
+    token = str(raw or "").strip().lower()
+    if token in {"admin", "developer"}:
+        return "developer"
+    return "user"
 
 
 @lru_cache(maxsize=1)
@@ -38,7 +49,8 @@ def _admin_usernames() -> frozenset[str]:
         if token:
             names.add(token)
     for row in _load_auth_user_rows():
-        if row.get("role") == "admin" or row.get("is_admin") is True:
+        role = _normalize_role(row.get("role"))
+        if role == "developer" or row.get("is_admin") is True:
             username = str(row.get("username", "")).strip()
             if username:
                 names.add(username)
@@ -58,15 +70,15 @@ def _load_auth_user_rows() -> list[dict]:
     return [row for row in users if isinstance(row, dict)]
 
 
-def _load_extra_users() -> list[tuple[str, str, bool]]:
-    out: list[tuple[str, str, bool]] = []
+def _load_extra_users() -> list[tuple[str, str, str]]:
+    out: list[tuple[str, str, str]] = []
     for row in _load_auth_user_rows():
         username = str(row.get("username", "")).strip()
         password = str(row.get("password", ""))
         if not username or not password:
             continue
-        is_admin = row.get("role") == "admin" or row.get("is_admin") is True
-        out.append((username, password, is_admin))
+        role = "developer" if row.get("is_admin") is True else _normalize_role(row.get("role"))
+        out.append((username, password, role))
     return out
 
 
@@ -77,11 +89,11 @@ def authenticate(username: str, password: str) -> AuthUser | None:
 
     admin_user, admin_pass = _admin_credentials()
     if name == admin_user and password == admin_pass:
-        return AuthUser(username=name, is_admin=True)
+        return AuthUser(username=name, role="developer")
 
-    for extra_user, extra_pass, extra_admin in _load_extra_users():
+    for extra_user, extra_pass, extra_role in _load_extra_users():
         if name == extra_user and password == extra_pass:
-            return AuthUser(username=name, is_admin=extra_admin)
+            return AuthUser(username=name, role=extra_role)
 
     return None
 
@@ -90,3 +102,9 @@ def is_admin_username(username: str | None) -> bool:
     if not username:
         return False
     return username.strip() in _admin_usernames()
+
+
+def role_for_username(username: str | None) -> str:
+    if not username:
+        return "user"
+    return "developer" if is_admin_username(username) else "user"

@@ -23,7 +23,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN cp -a data /app/data-default
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 COPY --from=frontend /frontend/dist ./dist
 
 EXPOSE 8766
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8766"]
