@@ -1,18 +1,23 @@
 import { useCallback, useMemo, useState } from 'react'
 import { UpdatePromptModal } from './UpdatePromptModal'
+import { PwaInstallModal } from './PwaInstallModal'
 import { MacPermissionsModal } from './MacPermissionsModal'
 import { usePwaUpdate } from '../../hooks/usePwaUpdate'
+import { usePwaInstall } from '../../hooks/usePwaInstall'
 import { useBackendUpdate } from '../../hooks/useBackendUpdate'
 import { useMacPermissionsContext } from '../../contexts/MacPermissionsContext'
+import { useUserSession } from '../../contexts/UserSessionContext'
 import { MacPermissionsStatusPanel } from './MacPermissionsStatusPanel'
 import { isPwaChannel } from '../../lib/pwaChannel'
 
 /**
- * PWA / 桌面渠道：更新确认弹窗 + Mac 代操权限提醒
+ * PWA / 桌面渠道：安装引导 + 更新确认弹窗 + Mac 代操权限提醒
  */
 export function SystemModalsShell() {
   const pwaChannel = isPwaChannel()
+  const session = useUserSession()
   const pwa = usePwaUpdate()
+  const pwaInstall = usePwaInstall(Boolean(session.username))
   const backend = useBackendUpdate(true)
   const perms = useMacPermissionsContext()
   const [updateBusy, setUpdateBusy] = useState(false)
@@ -20,6 +25,11 @@ export function SystemModalsShell() {
   const updateOpen = useMemo(
     () => pwa.swUpdateReady || backend.backendUpdateReady,
     [pwa.swUpdateReady, backend.backendUpdateReady],
+  )
+
+  const installOpen = useMemo(
+    () => pwaInstall.shouldPrompt && !updateOpen && !perms.shouldPrompt,
+    [pwaInstall.shouldPrompt, updateOpen, perms.shouldPrompt],
   )
 
   const handleUpdateConfirm = useCallback(async () => {
@@ -48,6 +58,13 @@ export function SystemModalsShell() {
 
   return (
     <>
+      <PwaInstallModal
+        open={installOpen}
+        mode={pwaInstall.mode}
+        installing={pwaInstall.installing}
+        onInstall={pwaInstall.applyInstall}
+        onDismiss={pwaInstall.dismissInstall}
+      />
       <UpdatePromptModal
         open={updateOpen}
         swUpdateReady={pwa.swUpdateReady}
