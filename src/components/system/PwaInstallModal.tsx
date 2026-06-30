@@ -57,6 +57,16 @@ export function PwaInstallModal({
           </ol>
           <p className="text-white/65">若未看到图标，请刷新页面后再试，或先多使用片刻后重开。</p>
         </>
+      ) : mode === 'insecure' ? (
+        <>
+          <p>当前连接不是安全 HTTPS，浏览器会禁用 PWA 安装。</p>
+          <p className="text-white/65">
+            请确认地址栏是 <code>https://shengzhou.duckdns.org</code> 且没有证书「危险」警告。
+          </p>
+          <p className="text-white/65">
+            修复 HTTPS 后刷新页面，将自动出现安装入口（或地址栏安装图标）。
+          </p>
+        </>
       ) : (
         <p className="text-white/65">当前浏览器暂不支持一键安装，请使用 Chrome / Edge 打开本页，或换用 Safari 按指引添加。</p>
       )}

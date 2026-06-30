@@ -3,7 +3,13 @@ import { isPwaChannel } from '../lib/pwaChannel'
 
 const DISMISS_KEY = 'jarvis_pwa_install_dismissed'
 
-export type PwaInstallMode = 'native' | 'safari_ios' | 'safari_mac' | 'chrome_manual' | 'unavailable'
+export type PwaInstallMode =
+  | 'native'
+  | 'safari_ios'
+  | 'safari_mac'
+  | 'chrome_manual'
+  | 'insecure'
+  | 'unavailable'
 
 export type PwaInstallState = {
   shouldPrompt: boolean
@@ -48,7 +54,7 @@ function detectManualMode(): PwaInstallMode | null {
   return null
 }
 
-export function usePwaInstall(loggedIn: boolean): PwaInstallState {
+export function usePwaInstall(): PwaInstallState {
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null)
   const [nativeReady, setNativeReady] = useState(false)
   const [manualMode, setManualMode] = useState<PwaInstallMode | null>(null)
@@ -60,7 +66,6 @@ export function usePwaInstall(loggedIn: boolean): PwaInstallState {
   const eligibleHost = (() => {
     if (typeof window === 'undefined') return false
     if (isPwaChannel()) return false
-    if (!isSecureContext()) return false
     if (isLocalDevHost(window.location.hostname)) return false
     return true
   })()
@@ -88,6 +93,10 @@ export function usePwaInstall(loggedIn: boolean): PwaInstallState {
 
     const timer = window.setTimeout(() => {
       if (deferredRef.current) return
+      if (!isSecureContext()) {
+        setManualMode('insecure')
+        return
+      }
       const manual = detectManualMode()
       if (manual) {
         setManualMode(manual)
@@ -110,8 +119,7 @@ export function usePwaInstall(loggedIn: boolean): PwaInstallState {
     : manualMode ?? 'unavailable'
 
   const shouldPrompt = Boolean(
-    loggedIn &&
-      eligibleHost &&
+    eligibleHost &&
       !dismissed &&
       !isPwaChannel() &&
       (nativeReady || manualMode !== null),

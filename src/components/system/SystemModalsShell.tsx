@@ -6,7 +6,6 @@ import { usePwaUpdate } from '../../hooks/usePwaUpdate'
 import { usePwaInstall } from '../../hooks/usePwaInstall'
 import { useBackendUpdate } from '../../hooks/useBackendUpdate'
 import { useMacPermissionsContext } from '../../contexts/MacPermissionsContext'
-import { useUserSession } from '../../contexts/UserSessionContext'
 import { MacPermissionsStatusPanel } from './MacPermissionsStatusPanel'
 import { isPwaChannel } from '../../lib/pwaChannel'
 
@@ -15,9 +14,8 @@ import { isPwaChannel } from '../../lib/pwaChannel'
  */
 export function SystemModalsShell() {
   const pwaChannel = isPwaChannel()
-  const session = useUserSession()
   const pwa = usePwaUpdate()
-  const pwaInstall = usePwaInstall(Boolean(session.username))
+  const pwaInstall = usePwaInstall()
   const backend = useBackendUpdate(true)
   const perms = useMacPermissionsContext()
   const [updateBusy, setUpdateBusy] = useState(false)
