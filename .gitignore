@@ -17,6 +17,14 @@ dist-ssr
 __pycache__
 *.py[cod]
 .env
+.pytest_cache/
+
+# Runtime / build cache (not user memory data)
+dev-dist/
+data/run/
+data/reply_tts_cache/
+data/traces/
+*.log
 
 # Editor directories and files
 .vscode/*

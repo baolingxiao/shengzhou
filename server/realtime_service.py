@@ -62,12 +62,14 @@ def create_realtime_session(
 
     model = (settings.openai_realtime_model or "gpt-realtime").strip()
     voice = (settings.openai_realtime_voice or "alloy").strip()
+    speed = float(settings.openai_realtime_speed or 1.0)
+    speed = max(0.25, min(1.5, speed))
     sid = (session_id or "default").strip()[:120] or "default"
 
     logger.info("[RealtimeSession] request received mode=%s", mode)
     logger.info("[RealtimeSession] character_id=%s", character_id or "")
     logger.info("[RealtimeSession] session_id=%s", sid)
-    logger.info("[RealtimeSession] model=%s voice=%s", model, voice)
+    logger.info("[RealtimeSession] model=%s voice=%s speed=%s", model, voice, speed)
 
     instructions = build_realtime_instructions(character_id, sid)
     est_tokens = len(instructions) // 2  # 粗估，仅日志
@@ -86,7 +88,7 @@ def create_realtime_session(
                     "silence_duration_ms": 500,
                 },
             },
-            "output": {"voice": voice},
+            "output": {"voice": voice, "speed": speed},
         },
     }
 

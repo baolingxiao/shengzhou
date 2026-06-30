@@ -33,6 +33,12 @@ class Settings(BaseSettings):
         default="alloy",
         validation_alias="OPENAI_REALTIME_VOICE",
     )
+    openai_realtime_speed: float = Field(
+        default=1.1,
+        ge=0.25,
+        le=1.5,
+        validation_alias="OPENAI_REALTIME_SPEED",
+    )
 
     # Claude 模型 ID（仅杂志热点话题 & YouTube视频模块使用）
     anthropic_model_sonnet: str = Field(
@@ -1235,6 +1241,84 @@ class Settings(BaseSettings):
     def _resolve_companion_life_obsidian_vault(cls, v: Any) -> Path | None:
         if v is None or v == "":
             return None
+        p = Path(v).expanduser() if not isinstance(v, Path) else v.expanduser()
+        if not p.is_absolute():
+            p = _project_root() / p
+        return p
+
+    # --- 沈昼世界引擎集成（shenzhou-world）---
+    shenzhou_integration_enabled: bool = Field(
+        default=True,
+        validation_alias="SHENZHOU_INTEGRATION_ENABLED",
+    )
+    shenzhou_world_api_url: str = Field(
+        default="http://127.0.0.1:3000",
+        validation_alias="SHENZHOU_WORLD_API_URL",
+    )
+    shenzhou_internal_token: str = Field(
+        default="",
+        validation_alias="SHENZHOU_INTERNAL_TOKEN",
+    )
+    shenzhou_user_entity_slug: str = Field(
+        default="dai-jinxin",
+        validation_alias="SHENZHOU_USER_ENTITY_SLUG",
+    )
+    shenzhou_user_display_name: str = Field(
+        default="戴金鑫",
+        validation_alias="SHENZHOU_USER_DISPLAY_NAME",
+    )
+    shenzhou_default_session_id: str = Field(
+        default="user-admin",
+        validation_alias="SHENZHOU_DEFAULT_SESSION_ID",
+    )
+    shenzhou_timezone: str = Field(
+        default="Asia/Shanghai",
+        validation_alias="SHENZHOU_TIMEZONE",
+    )
+    shenzhou_sync_hour: int = Field(default=23, ge=0, le=23, validation_alias="SHENZHOU_SYNC_HOUR")
+    shenzhou_sync_minute: int = Field(default=59, ge=0, le=59, validation_alias="SHENZHOU_SYNC_MINUTE")
+    shenzhou_pipeline_hour: int = Field(default=0, ge=0, le=23, validation_alias="SHENZHOU_PIPELINE_HOUR")
+    shenzhou_pipeline_minute: int = Field(default=5, ge=0, le=59, validation_alias="SHENZHOU_PIPELINE_MINUTE")
+    shenzhou_pull_hour: int = Field(default=0, ge=0, le=23, validation_alias="SHENZHOU_PULL_HOUR")
+    shenzhou_pull_minute: int = Field(default=15, ge=0, le=59, validation_alias="SHENZHOU_PULL_MINUTE")
+    shenzhou_api_timeout_seconds: float = Field(
+        default=60.0,
+        ge=5.0,
+        le=600.0,
+        validation_alias="SHENZHOU_API_TIMEOUT_SECONDS",
+    )
+    shenzhou_proactive_life_context: bool = Field(
+        default=False,
+        validation_alias="SHENZHOU_PROACTIVE_LIFE_CONTEXT",
+    )
+    shenzhou_cache_dir: Path = Field(
+        default_factory=lambda: _project_root() / "data" / "shenzhou",
+        validation_alias="SHENZHOU_CACHE_DIR",
+    )
+
+    @field_validator("shenzhou_integration_enabled", mode="before")
+    @classmethod
+    def _coerce_shenzhou_integration(cls, v: Any) -> bool:
+        if v is None or v == "":
+            return True
+        if isinstance(v, bool):
+            return v
+        return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+    @field_validator("shenzhou_proactive_life_context", mode="before")
+    @classmethod
+    def _coerce_shenzhou_proactive(cls, v: Any) -> bool:
+        if v is None or v == "":
+            return False
+        if isinstance(v, bool):
+            return v
+        return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+    @field_validator("shenzhou_cache_dir", mode="before")
+    @classmethod
+    def _resolve_shenzhou_cache(cls, v: Any) -> Path:
+        if v is None or v == "":
+            return _project_root() / "data" / "shenzhou"
         p = Path(v).expanduser() if not isinstance(v, Path) else v.expanduser()
         if not p.is_absolute():
             p = _project_root() / p

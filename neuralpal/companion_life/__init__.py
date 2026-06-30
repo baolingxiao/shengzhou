@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""数字伴侣生活引擎 Companion Life Engine。"""
+"""数字伴侣生活引擎 · 沈昼世界桥接层。"""
 
-from neuralpal.companion_life.companion_life_service import (
-    CompanionLifeService,
-    get_companion_life_service,
+from neuralpal.companion_life.bridge import (
+    maybe_build_life_context_for_turn,
+    on_life_snippet_used,
+    resolve_companion_instance_id_for_session,
 )
-from neuralpal.companion_life.config import is_companion_life_enabled
 
 __all__ = [
-    "CompanionLifeService",
-    "get_companion_life_service",
-    "is_companion_life_enabled",
+    "maybe_build_life_context_for_turn",
+    "on_life_snippet_used",
+    "resolve_companion_instance_id_for_session",
 ]

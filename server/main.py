@@ -317,6 +317,62 @@ app.include_router(system_router)
 app.include_router(trace_router)
 
 
+@app.on_event("startup")
+async def _startup_shenzhou_scheduler() -> None:
+    try:
+        from neuralpal.shenzhou.scheduler import start_shenzhou_scheduler
+
+        start_shenzhou_scheduler()
+    except Exception:
+        logger.exception("shenzhou scheduler startup failed")
+
+
+@app.post("/api/shenzhou/sync-user-day")
+async def api_shenzhou_sync_user_day(
+    session_id: str = DEFAULT_SESSION_ID,
+) -> dict[str, object]:
+    """手动触发：将今日用户对话同步到沈昼世界模型。"""
+    from neuralpal.shenzhou.scheduler import job_sync_user_day
+
+    return job_sync_user_day(session_id)
+
+
+@app.post("/api/shenzhou/pull-life-context")
+async def api_shenzhou_pull_life_context() -> dict[str, object]:
+    """手动触发：从世界引擎拉取今日生活上下文并缓存。"""
+    from neuralpal.shenzhou.scheduler import job_pull_life_context
+
+    return job_pull_life_context()
+
+
+@app.post("/api/shenzhou/run-pipeline")
+async def api_shenzhou_run_pipeline() -> dict[str, object]:
+    """手动触发：世界引擎每日流水线（背景优化 + 模拟）。"""
+    from neuralpal.shenzhou.scheduler import job_world_daily_pipeline
+
+    return job_world_daily_pipeline()
+
+
+@app.get("/api/shenzhou/status")
+async def api_shenzhou_status() -> dict[str, object]:
+    from neuralpal.config import get_settings
+    from neuralpal.shenzhou.client import ping
+
+    s = get_settings()
+    return {
+        "enabled": s.shenzhou_integration_enabled,
+        "world_api_url": s.shenzhou_world_api_url,
+        "reachable": ping() if s.shenzhou_integration_enabled else False,
+        "user_entity_slug": s.shenzhou_user_entity_slug,
+        "schedule": {
+            "sync": f"{s.shenzhou_sync_hour:02d}:{s.shenzhou_sync_minute:02d}",
+            "pipeline": f"{s.shenzhou_pipeline_hour:02d}:{s.shenzhou_pipeline_minute:02d}",
+            "pull": f"{s.shenzhou_pull_hour:02d}:{s.shenzhou_pull_minute:02d}",
+            "timezone": s.shenzhou_timezone,
+        },
+    }
+
+
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -641,9 +697,10 @@ if _FRONTEND_DIST is not None:
 
 def main() -> None:
     port = int(os.environ.get("NEURALPAL_BACKEND_PORT", "8766"))
+    host = os.environ.get("NEURALPAL_BIND", "127.0.0.1")
     uvicorn.run(
         "server.main:app",
-        host="127.0.0.1",
+        host=host,
         port=port,
         reload=False,
     )

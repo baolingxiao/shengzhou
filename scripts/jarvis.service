@@ -1,0 +1,25 @@
+[Unit]
+Description=贾维斯 Neural Pal (PWA + API)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@SERVICE_USER@
+Group=@SERVICE_USER@
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@INSTALL_DIR@/.env
+Environment=JARVIS_APP_MODE=1
+Environment=NEURALPAL_BIND=0.0.0.0
+ExecStart=@INSTALL_DIR@/.venv/bin/python -m server.main
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
