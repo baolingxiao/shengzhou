@@ -719,6 +719,13 @@ class MemoryMaintenanceService:
 
     # ---------- runners ----------
     def run_daily_maintenance(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, Any]:
+        from neuralpal.config import get_settings
+
+        if get_settings().memory_tiered_pipeline_only:
+            from neuralpal.memory.memory_ids import backfill_memory_ids
+
+            n = int(backfill_memory_ids(self._root))
+            return {"mode": "tiered", "backfill_ids": n}
         n = now or datetime.now()
         target = (n.date() - timedelta(days=1))
         gen = self.generate_daily_summary(target, force=False, dry_run=dry_run)
@@ -730,6 +737,12 @@ class MemoryMaintenanceService:
         return {"date": target.isoformat(), "generate": gen.status, "cleanup": cln.status}
 
     def run_monthly_maintenance(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, Any]:
+        from neuralpal.config import get_settings
+
+        if get_settings().memory_tiered_pipeline_only:
+            from neuralpal.memory.memory_tiered_maintenance import run_tiered_monthly
+
+            return run_tiered_monthly(self, now=now, dry_run=dry_run)
         n = now or datetime.now()
         first_this_month = date(n.year, n.month, 1)
         prev_month_last_day = first_this_month - timedelta(days=1)
@@ -743,6 +756,12 @@ class MemoryMaintenanceService:
         return {"month": mk, "generate": gen.status, "cleanup": cln.status}
 
     def run_weekly_maintenance(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, Any]:
+        from neuralpal.config import get_settings
+
+        if get_settings().memory_tiered_pipeline_only:
+            from neuralpal.memory.memory_tiered_maintenance import run_tiered_weekly
+
+            return run_tiered_weekly(self, now=now, dry_run=dry_run)
         n = now or datetime.now()
         target = n.date() - timedelta(days=7)
         iso = target.isocalendar()

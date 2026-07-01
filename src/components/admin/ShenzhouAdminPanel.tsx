@@ -3,24 +3,27 @@ import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '../../lib/cn'
 import { DEFAULT_CHARACTER_NAME } from '../../lib/characterConfig'
 import {
-  clearChatSession,
   deleteMemory,
   deleteMemoryMessages,
-  fetchChatHistory,
+  fetchMemoryById,
   fetchMemoryDetail,
   fetchMemoryList,
   fetchMemorySummary,
+  fetchMemoryTransparency,
   runMemoryMaintenance,
   toggleMemoryMark,
   type ChatHistoryMessage,
   type MemoryItem,
   type MemoryTier,
+  type MemoryTransparencyRecord,
 } from '../../lib/adminApi'
 import { parseMemoryChatBody, shortMemorySessionLabel } from '../../lib/parseMemoryChat'
 import { MemoryChatBubbles } from './MemoryChatBubbles'
+import { MemoryDetailSheet } from './MemoryDetailSheet'
 import { MemoryMessageActionSheet } from './MemoryMessageActionSheet'
+import { MemoryTransparencyList } from './MemoryTransparencyList'
 
-type TabId = 'short' | 'medium' | 'long' | 'chat' | 'maintain'
+type TabId = 'short' | 'medium' | 'long' | 'transparency' | 'maintain'
 
 type ShortSessionView = {
   item: MemoryItem
@@ -30,16 +33,13 @@ type ShortSessionView = {
 type MessageScope = {
   id: string
   relPath?: string
-  useLiveSession?: boolean
 }
-
-const LIVE_CHAT_SCOPE_ID = '__live_chat__'
 
 const TABS: { id: TabId; label: string; tier?: MemoryTier }[] = [
   { id: 'short', label: '短期', tier: 'short' },
   { id: 'medium', label: '中期', tier: 'medium' },
   { id: 'long', label: '长期', tier: 'long' },
-  { id: 'chat', label: '聊天记录' },
+  { id: 'transparency', label: '透明化' },
   { id: 'maintain', label: '清洗维护' },
 ]
 
@@ -53,10 +53,15 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
   const [tab, setTab] = useState<TabId>('short')
   const [items, setItems] = useState<MemoryItem[]>([])
   const [shortSessions, setShortSessions] = useState<ShortSessionView[]>([])
-  const [chat, setChat] = useState<ChatHistoryMessage[]>([])
+  const [transparency, setTransparency] = useState<MemoryTransparencyRecord[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [selected, setSelected] = useState<MemoryItem | null>(null)
-  const [detail, setDetail] = useState('')
+  const [detailSheet, setDetailSheet] = useState<{
+    memoryId: string
+    title: string
+    body: string
+    loading: boolean
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [maintainLog, setMaintainLog] = useState<string>('')
@@ -69,11 +74,6 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
     relPath: item.rel_path,
   })
 
-  const liveChatScope: MessageScope = {
-    id: LIVE_CHAT_SCOPE_ID,
-    useLiveSession: true,
-  }
-
   const cancelSelection = useCallback(() => {
     setSelectionScope(null)
     setSelectedIndices(new Set())
@@ -84,19 +84,45 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
     setCounts(s.counts)
   }, [])
 
+  const openDetailById = useCallback(async (memoryId: string) => {
+    setDetailSheet({
+      memoryId,
+      title: memoryId,
+      body: '',
+      loading: true,
+    })
+    try {
+      const res = await fetchMemoryById(memoryId)
+      setDetailSheet({
+        memoryId: res.memory_id,
+        title: res.title,
+        body: res.body,
+        loading: false,
+      })
+    } catch (err) {
+      setDetailSheet({
+        memoryId,
+        title: memoryId,
+        body: err instanceof Error ? err.message : '读取失败',
+        loading: false,
+      })
+    }
+  }, [])
+
   const loadTab = useCallback(async (next: TabId) => {
     setLoading(true)
     setError(null)
     setSelected(null)
-    setDetail('')
+    setDetailSheet(null)
     setShortSessions([])
+    setTransparency([])
     cancelSelection()
     setActionMenu(null)
     try {
-      if (next === 'chat') {
+      if (next === 'transparency') {
         await loadSummary()
-        const res = await fetchChatHistory(sessionId)
-        setChat(res.messages)
+        const res = await fetchMemoryTransparency(sessionId)
+        setTransparency(res.records)
       } else if (next === 'maintain') {
         await loadSummary()
       } else {
@@ -129,18 +155,10 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
     }
   }, [loadSummary, sessionId, cancelSelection])
 
-  const refreshAfterMessageDelete = useCallback(
-    async (scope: MessageScope) => {
-      await loadSummary()
-      if (scope.useLiveSession) {
-        const res = await fetchChatHistory(sessionId)
-        setChat(res.messages)
-      } else {
-        await loadTab('short')
-      }
-    },
-    [loadSummary, loadTab, sessionId],
-  )
+  const refreshAfterMessageDelete = useCallback(async () => {
+    await loadSummary()
+    await loadTab('short')
+  }, [loadSummary, loadTab])
 
   const handleDeleteMessages = useCallback(
     async (scope: MessageScope, indices: number[]) => {
@@ -148,17 +166,14 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
       const label = indices.length === 1 ? '这条消息' : `选中的 ${indices.length} 条消息`
       if (!confirm(`确定删除${label}？`)) return
       try {
-        await deleteMemoryMessages(indices, {
-          relPath: scope.relPath,
-          sessionId: scope.useLiveSession ? sessionId : undefined,
-        })
+        await deleteMemoryMessages(indices, { relPath: scope.relPath })
         cancelSelection()
-        await refreshAfterMessageDelete(scope)
+        await refreshAfterMessageDelete()
       } catch (err) {
         setError(err instanceof Error ? err.message : '删除失败')
       }
     },
-    [cancelSelection, refreshAfterMessageDelete, sessionId],
+    [cancelSelection, refreshAfterMessageDelete],
   )
 
   const handleMessageClick = useCallback(
@@ -187,12 +202,27 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
 
   const openDetail = async (item: MemoryItem) => {
     setSelected(item)
-    setDetail('')
+    setDetailSheet({
+      memoryId: item.memory_id,
+      title: item.title,
+      body: '',
+      loading: true,
+    })
     try {
       const res = await fetchMemoryDetail(item.rel_path)
-      setDetail(res.body)
+      setDetailSheet({
+        memoryId: res.memory_id || item.memory_id,
+        title: res.title,
+        body: res.body,
+        loading: false,
+      })
     } catch (err) {
-      setDetail(err instanceof Error ? err.message : '读取失败')
+      setDetailSheet({
+        memoryId: item.memory_id,
+        title: item.title,
+        body: err instanceof Error ? err.message : '读取失败',
+        loading: false,
+      })
     }
   }
 
@@ -207,12 +237,6 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
   const handleMark = async (item: MemoryItem) => {
     await toggleMemoryMark(item.rel_path)
     void loadTab(tab)
-  }
-
-  const handleClearChat = async () => {
-    if (!confirm('清空当前会话的聊天上下文？')) return
-    await clearChatSession(sessionId)
-    setChat([])
   }
 
   const handleMaintenance = async (action: 'daily' | 'weekly' | 'monthly' | 'catchup') => {
@@ -313,47 +337,50 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
                     const scope = scopeForItem(item)
                     const inSelection = selectionScope?.id === scope.id
                     return (
-                    <li
-                      key={item.id}
-                      className="overflow-hidden rounded-xl border border-white/10 bg-black/20"
-                    >
-                      <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                        <span className="text-xs font-medium text-foreground/90">
-                          {item.marked && '★ '}
-                          {shortMemorySessionLabel(item)}
-                        </span>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="text-[11px] text-muted hover:text-foreground"
-                            onClick={() => void handleMark(item)}
-                          >
-                            {item.marked ? '取消标记' : '标记重要'}
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[11px] text-red-300/80 hover:text-red-200"
-                            onClick={() => void handleDelete(item)}
-                          >
-                            删除会话
-                          </button>
+                      <li
+                        key={item.id}
+                        className="overflow-hidden rounded-xl border border-white/10 bg-black/20"
+                      >
+                        <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+                          <div>
+                            <p className="font-mono text-[10px] text-[#07c160]/80">{item.memory_id}</p>
+                            <span className="text-xs font-medium text-foreground/90">
+                              {item.marked && '★ '}
+                              {shortMemorySessionLabel(item)}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="text-[11px] text-muted hover:text-foreground"
+                              onClick={() => void handleMark(item)}
+                            >
+                              {item.marked ? '取消标记' : '标记重要'}
+                            </button>
+                            <button
+                              type="button"
+                              className="text-[11px] text-red-300/80 hover:text-red-200"
+                              onClick={() => void handleDelete(item)}
+                            >
+                              删除会话
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <MemoryChatBubbles
-                        messages={messages}
-                        className="rounded-none"
-                        interactive
-                        selectionMode={inSelection}
-                        selectedIndices={inSelection ? selectedIndices : undefined}
-                        onMessageClick={(index) => handleMessageClick(scope, index)}
-                      />
-                    </li>
+                        <MemoryChatBubbles
+                          messages={messages}
+                          className="rounded-none"
+                          interactive
+                          selectionMode={inSelection}
+                          selectedIndices={inSelection ? selectedIndices : undefined}
+                          onMessageClick={(index) => handleMessageClick(scope, index)}
+                        />
+                      </li>
                     )
                   })}
                 </ul>
               )}
 
-              {!loading && tab !== 'chat' && tab !== 'maintain' && tab !== 'short' && (
+              {!loading && tab !== 'transparency' && tab !== 'maintain' && tab !== 'short' && (
                 <ul className="space-y-2">
                   {items.length === 0 && !error && (
                     <p className="text-sm text-muted/80">暂无记忆条目</p>
@@ -372,10 +399,13 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
                         onClick={() => void openDetail(item)}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-medium text-foreground">
-                            {item.marked && '★ '}
-                            {item.title}
-                          </span>
+                          <div>
+                            <p className="font-mono text-[10px] text-[#07c160]/80">{item.memory_id}</p>
+                            <span className="text-sm font-medium text-foreground">
+                              {item.marked && '★ '}
+                              {item.title}
+                            </span>
+                          </div>
                           <span className="shrink-0 text-[10px] text-muted">{item.category}</span>
                         </div>
                         <p className="mt-1 line-clamp-2 text-xs text-muted">{item.preview}</p>
@@ -401,35 +431,14 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
                 </ul>
               )}
 
-              {selected && detail && tab !== 'chat' && tab !== 'maintain' && tab !== 'short' && (
-                <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-                  <p className="mb-2 text-xs text-muted">{selected.rel_path}</p>
-                  <pre className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/90">
-                    {detail}
-                  </pre>
-                </div>
-              )}
-
-              {tab === 'chat' && !loading && (
+              {tab === 'transparency' && !loading && (
                 <div>
-                  <div className="mb-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => void handleClearChat()}
-                      className="rounded-full border border-white/15 px-3 py-1 text-xs text-muted hover:text-foreground"
-                    >
-                      清空会话上下文
-                    </button>
-                  </div>
-                  <MemoryChatBubbles
-                    messages={chat}
-                    emptyText="当前无内存中的聊天记录"
-                    interactive
-                    selectionMode={selectionScope?.id === LIVE_CHAT_SCOPE_ID}
-                    selectedIndices={
-                      selectionScope?.id === LIVE_CHAT_SCOPE_ID ? selectedIndices : undefined
-                    }
-                    onMessageClick={(index) => handleMessageClick(liveChatScope, index)}
+                  <p className="mb-3 text-xs leading-relaxed text-muted">
+                    每轮对话中，沈昼为回答你的问题选中了哪些记忆编号（ST/MT/LT）。点击编号可查看该条记忆详情。
+                  </p>
+                  <MemoryTransparencyList
+                    records={transparency}
+                    onMemoryIdClick={(id) => void openDetailById(id)}
                   />
                 </div>
               )}
@@ -437,7 +446,7 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
               {tab === 'maintain' && (
                 <div className="space-y-3">
                   <p className="text-xs leading-relaxed text-muted">
-                    按百事通记忆模块：日结汇总短期 → 中期；周结/月结 rollup 到长期并归档清理旧文件。
+                    分层管线：对话仅存短期；每 7 天将短期（★ 优先）豆包总结入中期；每月初将上月中期总结入长期。
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {(['daily', 'weekly', 'monthly', 'catchup'] as const).map((action) => (
@@ -447,9 +456,9 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
                         onClick={() => void handleMaintenance(action)}
                         className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-foreground hover:bg-white/10"
                       >
-                        {action === 'daily' && '日结清洗'}
-                        {action === 'weekly' && '周结归档'}
-                        {action === 'monthly' && '月结归档'}
+                        {action === 'daily' && '编号回填'}
+                        {action === 'weekly' && '7天→中期'}
+                        {action === 'monthly' && '月底→长期'}
                         {action === 'catchup' && '补跑全部'}
                       </button>
                     ))}
@@ -463,7 +472,7 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
               )}
             </div>
 
-            {selectionScope && (
+            {selectionScope && tab === 'short' && (
               <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-[#1a1d26]/95 px-4 py-3">
                 <span className="text-xs text-muted">已选 {selectedIndices.size} 条</span>
                 <div className="flex gap-2">
@@ -488,6 +497,15 @@ export function ShenzhouAdminPanel({ open, onClose, sessionId }: ShenzhouAdminPa
               </div>
             )}
           </motion.aside>
+
+          <MemoryDetailSheet
+            open={detailSheet !== null}
+            memoryId={detailSheet?.memoryId}
+            title={detailSheet?.title}
+            body={detailSheet?.body}
+            loading={detailSheet?.loading}
+            onClose={() => setDetailSheet(null)}
+          />
 
           <MemoryMessageActionSheet
             open={actionMenu !== null}

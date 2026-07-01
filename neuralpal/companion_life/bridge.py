@@ -29,6 +29,9 @@ LIFE_STATUS_PATTERNS = [
         r"刚才去哪",
         r"有什么想分享",
         r"你现在忙吗",
+        r"我是谁",
+        r"你知道我是谁",
+        r"who am i",
     )
 ]
 
@@ -66,10 +69,12 @@ def _load_cached_context(day: date) -> dict[str, Any] | None:
 
 
 def _format_life_addon(ctx: dict[str, Any], *, companion_name: str) -> str:
+    s = get_settings()
     ds = ctx.get("dailyState") or {}
     life_events = ctx.get("lifeEvents") or []
     threads = ctx.get("activeThreads") or []
     shareable = ctx.get("shareableEvents") or []
+    memories = ctx.get("memories") or []
     view = ctx.get("shenzhouView") or {}
 
     lines = [
@@ -108,6 +113,23 @@ def _format_life_addon(ctx: dict[str, Any], *, companion_name: str) -> str:
         lines.append("进行中的事务线：")
         for t in threads[:5]:
             lines.append(f"- {t.get('title', '')}：{(t.get('summary') or '')[:80]}")
+
+    user_name = (s.shenzhou_user_display_name or "").strip()
+    user_slug = (s.shenzhou_user_entity_slug or "").strip().lower()
+    related_memories: list[str] = []
+    for m in memories[:30]:
+        content = str(m.get("content") or "").strip()
+        if not content:
+            continue
+        low = content.lower()
+        if (user_name and user_name in content) or (user_slug and user_slug in low):
+            related_memories.append(content[:120])
+        if len(related_memories) >= 5:
+            break
+    if related_memories:
+        lines.append("与用户身份相关的世界记忆：")
+        for item in related_memories:
+            lines.append(f"- {item}")
 
     lines.append(f"（{companion_name} 仅分享沈昼视角可见的信息）")
     return "\n".join(lines)

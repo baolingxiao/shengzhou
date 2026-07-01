@@ -34,6 +34,7 @@ type NeuralWakeupProps = {
   loginError?: string | null
   loggingIn?: boolean
   onLogin?: (username: string, password: string) => Promise<void>
+  onRegister?: (username: string, password: string) => Promise<void>
   onLogout?: () => void
   onOpenProfile?: () => void
   personaRequired?: boolean
@@ -61,6 +62,7 @@ export function NeuralWakeup({
   loginError = null,
   loggingIn = false,
   onLogin,
+  onRegister,
   onLogout,
   onOpenProfile,
   personaRequired = false,
@@ -248,6 +250,9 @@ export function NeuralWakeup({
         onOpenProfile={onOpenProfile}
         onLogin={async (user, pass) => {
           await onLogin?.(user, pass)
+        }}
+        onRegister={async (user, pass) => {
+          await onRegister?.(user, pass)
         }}
         onSavePersona={async (displayName, stylePrompt, apiKeys) => {
           await onSavePersona?.(displayName, stylePrompt, apiKeys)

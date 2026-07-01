@@ -8,7 +8,7 @@ type ShenzhouAdminButtonProps = {
   visible?: boolean
 }
 
-/** 右下角入口：沈昼记忆与聊天记录后台 */
+/** 右下角入口：沈昼记忆宫殿 */
 export function ShenzhouAdminButton({ className, visible = true }: ShenzhouAdminButtonProps) {
   const [open, setOpen] = useState(false)
   const { sessionId } = useUserSession()

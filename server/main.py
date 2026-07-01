@@ -35,12 +35,11 @@ from neuralpal.config import get_settings
 from neuralpal.llm.llm_router import NeuralPalChatOrchestrator
 from neuralpal.memory.admin_service import (
     bootstrap_character_memory_maintenance,
-    serialize_messages,
 )
 from neuralpal.memory.character_palace import palace_paths_for_character_id
 from neuralpal.memory.user_palace import user_palace_paths
 from neuralpal.memory.memory_system import NeuralPalMemoryPalaceOrchestrator
-from server.auth import authenticate
+from server.auth import authenticate, register_user
 from server.auth_session import (
     AuthSession,
     issue_access_token,
@@ -48,7 +47,7 @@ from server.auth_session import (
     require_developer_session,
     session_id_for_username,
 )
-from server.memory_routes import attach_chat_admin_routes, attach_memory_message_routes, router as admin_router
+from server.memory_routes import attach_memory_message_routes, router as admin_router
 from server.trust_routes import router as trust_router
 from server.system_routes import router as system_router
 from server.shenzhou_bridge_auth import require_shenzhou_bridge_token
@@ -85,6 +84,11 @@ class ChatRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=40)
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 class UserPersonaRequest(BaseModel):
@@ -189,15 +193,22 @@ class ChatService:
                 "character_id": None if user.role == "user" else cid,
             }
             if isinstance(orch, NeuralPalMemoryPalaceOrchestrator):
+                settings = get_settings()
                 call_kwargs["runtime_user"] = (
                     {
                         "username": user.username,
                         "role": user.role,
-                        "display_name": persona.display_name if persona else "",
-                        "style_prompt": persona.style_prompt if persona else "",
+                        "display_name": (
+                            persona.display_name
+                            if user.role == "user" and persona
+                            else settings.shenzhou_user_display_name
+                        ),
+                        "style_prompt": (
+                            persona.style_prompt if user.role == "user" and persona else ""
+                        ),
+                        "shenzhou_user_entity_slug": settings.shenzhou_user_entity_slug,
+                        "shenzhou_user_display_name": settings.shenzhou_user_display_name,
                     }
-                    if user.role == "user"
-                    else None
                 )
             result = await asyncio.to_thread(
                 orch.chat_turn,
@@ -232,20 +243,6 @@ class ChatService:
             self._memory_orch.pop(sid, None)
             self._basic_orch.pop(sid, None)
             self._orch_profile.pop(sid, None)
-
-    def get_session_history(self, session_id: str) -> list[dict[str, str]]:
-        sid = self._session(session_id)
-        with self._lock:
-            orch = self._memory_orch.get(sid) or self._basic_orch.get(sid)
-        if orch is None:
-            return []
-        if hasattr(orch, "_short"):
-            messages = list(orch._short.chat_memory.messages)
-        elif hasattr(orch, "_history"):
-            messages = list(orch._history)
-        else:
-            return []
-        return serialize_messages(messages)
 
     def delete_live_messages(
         self,
@@ -439,7 +436,6 @@ try:
 except Exception:
     logger.exception("failed to register shenzhou in-app sender")
 
-attach_chat_admin_routes(admin_router, service)
 attach_memory_message_routes(admin_router, service)
 app.include_router(admin_router, dependencies=[Depends(require_developer_session)])
 app.include_router(trust_router)
@@ -594,6 +590,22 @@ async def api_login(payload: LoginRequest) -> dict[str, object]:
     user = authenticate(payload.username, payload.password)
     if user is None:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
+    token = issue_access_token(user)
+    return {
+        "ok": True,
+        "username": user.username,
+        "role": user.role,
+        "is_admin": user.is_admin,
+        "access_token": token,
+    }
+
+
+@app.post("/api/register")
+async def api_register(payload: RegisterRequest) -> dict[str, object]:
+    try:
+        user = register_user(payload.username, payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     token = issue_access_token(user)
     return {
         "ok": True,

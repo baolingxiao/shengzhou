@@ -49,9 +49,16 @@ def character_palace_scope(character_name: str) -> Iterator[Path]:
         set_palace_scope(palace_root=None, chroma_path=None)
 
 
-def _entry_to_dict(entry: MemoryEntry) -> dict[str, Any]:
+def _entry_to_dict(entry: MemoryEntry, palace_root: Path) -> dict[str, Any]:
+    from neuralpal.memory.memory_ids import ensure_memory_id, memory_id_from_meta
+    from neuralpal.memory.palace_browser import _split_frontmatter
+
+    text = entry.path.read_text(encoding="utf-8", errors="replace")
+    meta, _ = _split_frontmatter(text)
+    mid = memory_id_from_meta(meta) or ensure_memory_id(palace_root, entry.path, entry.tier)
     return {
         "id": entry.id,
+        "memory_id": mid,
         "tier": entry.tier.value,
         "tier_label": entry.tier.label,
         "rel_path": entry.rel_path,
@@ -80,8 +87,11 @@ def list_memories(character_name: str, tier: str) -> list[dict[str, Any]]:
         mem_tier = MemoryTier(tier.strip().lower())
     except ValueError as exc:
         raise ValueError(f"无效 tier: {tier}") from exc
-    with character_palace_scope(character_name):
-        return [_entry_to_dict(e) for e in list_memory_entries(mem_tier)]
+    with character_palace_scope(character_name) as root:
+        from neuralpal.memory.memory_ids import backfill_memory_ids
+
+        backfill_memory_ids(root)
+        return [_entry_to_dict(e, root) for e in list_memory_entries(mem_tier)]
 
 
 def get_memory_detail(character_name: str, rel_path: str) -> dict[str, Any]:
@@ -89,14 +99,37 @@ def get_memory_detail(character_name: str, rel_path: str) -> dict[str, Any]:
     fp = (root / rel_path).resolve()
     if not fp.is_file() or not str(fp).startswith(str(root)):
         raise FileNotFoundError(rel_path)
-    with character_palace_scope(character_name):
+    with character_palace_scope(character_name) as palace_root:
+        from neuralpal.memory.memory_ids import ensure_memory_id, memory_id_from_meta
+        from neuralpal.memory.palace_browser import _split_frontmatter
+
         title, body = read_memory_detail(fp)
+        tier = MemoryTier.SHORT
+        if rel_path.replace("\\", "/").startswith("02_"):
+            tier = MemoryTier.MEDIUM
+        elif rel_path.replace("\\", "/").startswith("03_"):
+            tier = MemoryTier.LONG
+        meta, _ = _split_frontmatter(fp.read_text(encoding="utf-8"))
+        mid = memory_id_from_meta(meta) or ensure_memory_id(palace_root, fp, tier)
     return {
         "rel_path": rel_path,
+        "memory_id": mid,
         "title": title,
         "body": body,
         "category": _category_from_rel(rel_path),
     }
+
+
+def get_memory_by_id(character_name: str, memory_id: str) -> dict[str, Any]:
+    root = ensure_character_palace(character_name)
+    with character_palace_scope(character_name):
+        from neuralpal.memory.memory_ids import resolve_memory_by_id
+
+        row = resolve_memory_by_id(root, memory_id)
+        if row is None:
+            raise FileNotFoundError(memory_id)
+        detail = get_memory_detail(character_name, row["rel_path"])
+        return {**detail, **row}
 
 
 def delete_memory(character_name: str, rel_path: str) -> None:
@@ -231,9 +264,16 @@ def bootstrap_character_memory_maintenance(character_id: str | None = None) -> N
         logging.getLogger(__name__).exception("memory maintenance scheduler start failed")
 
 
+def list_memory_transparency(character_name: str, session_id: str, *, limit: int = 80) -> list[dict[str, Any]]:
+    root = ensure_character_palace(character_name)
+    with character_palace_scope(character_name):
+        from neuralpal.memory.memory_transparency import list_transparency_records
+
+        return list_transparency_records(root, session_id, limit=limit)
+
+
 def default_maintenance_hint() -> str:
-    yesterday = date.today() - timedelta(days=1)
     return (
-        f"日结：汇总 {yesterday.isoformat()} 短期记忆并归档；"
-        "周结/月结/年结：逐层 rollup 到长期并清理旧文件。"
+        "分层管线：对话仅存短期；每 7 天将短期（优先★标记）豆包总结入中期；"
+        "每月初将上月中期总结入长期并写入向量库。"
     )

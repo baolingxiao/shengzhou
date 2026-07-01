@@ -6,6 +6,7 @@ export type MemoryTier = 'short' | 'medium' | 'long'
 
 export type MemoryItem = {
   id: string
+  memory_id: string
   tier: MemoryTier
   tier_label: string
   rel_path: string
@@ -52,8 +53,22 @@ export async function fetchMemoryList(tier: MemoryTier, characterId = DEFAULT_CH
 }
 
 export async function fetchMemoryDetail(relPath: string, characterId = DEFAULT_CHARACTER_ID) {
-  return adminJson<{ title: string; body: string; category: string }>(
+  return adminJson<{ title: string; body: string; category: string; memory_id: string }>(
     `/admin/memory/detail?rel_path=${encodeURIComponent(relPath)}&character_id=${encodeURIComponent(characterId)}`,
+  )
+}
+
+export async function fetchMemoryById(memoryId: string, characterId = DEFAULT_CHARACTER_ID) {
+  return adminJson<{
+    memory_id: string
+    title: string
+    body: string
+    category: string
+    tier: MemoryTier
+    rel_path: string
+    marked: boolean
+  }>(
+    `/admin/memory/by-id?memory_id=${encodeURIComponent(memoryId)}&character_id=${encodeURIComponent(characterId)}`,
   )
 }
 
@@ -107,15 +122,19 @@ export async function deleteMemoryMessages(
   )
 }
 
-export async function fetchChatHistory(sessionId = DEFAULT_SESSION_ID) {
-  return adminJson<{ messages: ChatHistoryMessage[]; count: number }>(
-    `/admin/chat/history?session_id=${encodeURIComponent(sessionId)}`,
-  )
+export type MemoryTransparencyRecord = {
+  ts: string
+  session_id: string
+  user_query: string
+  memory_ids: string[]
+  reasoning: string
+  reply_preview: string
+  vector_used: boolean
+  gate: string
 }
 
-export async function clearChatSession(sessionId = DEFAULT_SESSION_ID) {
-  return adminJson<{ ok: boolean }>(
-    `/admin/chat/session?session_id=${encodeURIComponent(sessionId)}`,
-    { method: 'DELETE' },
+export async function fetchMemoryTransparency(sessionId = DEFAULT_SESSION_ID, characterId = DEFAULT_CHARACTER_ID) {
+  return adminJson<{ records: MemoryTransparencyRecord[]; count: number }>(
+    `/admin/memory/transparency?session_id=${encodeURIComponent(sessionId)}&character_id=${encodeURIComponent(characterId)}`,
   )
 }

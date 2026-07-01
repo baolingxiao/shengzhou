@@ -862,8 +862,13 @@ class NeuralPalChatOrchestrator:
         _verbose_print(self.verbose, f"系统提示已加载，长度={len(self._system_base)} 字符")
 
     def _resolve_system_text(
-        self, *, session_id: str = "default", character_id: str | None = None
+        self,
+        *,
+        session_id: str = "default",
+        character_id: str | None = None,
+        user_text: str = "",
     ) -> str:
+        from neuralpal.characters.character_rules import is_character_past_query
         from neuralpal.characters.prompt_bridge import (
             build_character_system_addon,
             resolve_character_for_session,
@@ -877,7 +882,10 @@ class NeuralPalChatOrchestrator:
         if character is None:
             base = self._system_base
         else:
-            addon = build_character_system_addon(character)
+            addon = build_character_system_addon(
+                character,
+                include_background_memory=is_character_past_query(user_text),
+            )
             _verbose_print(
                 self.verbose,
                 f"[CHARACTER] injected persona={character.name!r} mbti={character.user_mbti}",
@@ -903,7 +911,9 @@ class NeuralPalChatOrchestrator:
     ) -> list[BaseMessage]:
         """拼接：system（含规则层 + 伴侣人格）+ 历史轮次 + 当前用户消息。"""
         system_text = self._resolve_system_text(
-            session_id=session_id, character_id=character_id
+            session_id=session_id,
+            character_id=character_id,
+            user_text=user_text,
         )
         return [
             SystemMessage(content=system_text),

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -313,6 +314,43 @@ def _strip_memory_frontmatter(text: str) -> str:
     return body
 
 
+_PAST_QUERY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"过往",
+        r"以前",
+        r"过去",
+        r"童年",
+        r"小时候",
+        r"成长",
+        r"经历",
+        r"背景故事",
+        r"自传",
+        r"你的故事",
+        r"讲讲你.{0,8}(?:经历|过去|以前|小时候|童年)",
+        r"说说你.{0,8}(?:经历|过去|以前|小时候|童年)",
+        r"你(?:爸|妈|父亲|母亲|父母|家里)",
+        r"怎么成为",
+        r"为什么.{0,6}特助",
+        r"名字.{0,4}意思",
+        r"昼.{0,4}意思",
+        r"十五岁",
+        r"临江",
+        r"沈建衡|宋秋岚",
+    )
+)
+
+
+def is_character_past_query(user_text: str) -> bool:
+    """用户是否在明确询问角色过往/经历/家庭等（此时才注入 character_memory.md）。"""
+    q = (user_text or "").strip()
+    if not q or len(q) < 2:
+        return False
+    if any(p.search(q) for p in _PAST_QUERY_PATTERNS):
+        return True
+    return False
+
+
 def load_character_memory_text(character: AICharacter) -> str:
     """读取角色背景记忆正文（过长时节选）。"""
     base = character_data_dir(character)
@@ -340,9 +378,9 @@ def build_character_memory_addon(character: AICharacter) -> str:
     if not text:
         return ""
     return f"""{_MEMORY_MARKER}
-### 【角色长期背景记忆 · 必须内化】
-以下为你（**{character.name}**）的自传与人格依据。回复须与其中经历、关系、职业细节与价值观一致。
-不要向用户整段复述；仅在合适时机自然流露对应记忆。
+### 【角色长期背景记忆 · 本轮按需加载】
+用户正在询问你的过往/经历/家庭/背景。以下为你（**{character.name}**）的自传依据。
+回复须与其中情节、关系与价值观一致；**不要**向用户整段复述，只答所问、自然流露相关片段。
 
 {text}
 """
@@ -354,6 +392,7 @@ __all__ = [
     "character_data_dir",
     "character_rules_dir",
     "format_trust_status_block",
+    "is_character_past_query",
     "load_character_rules_markdown",
     "load_reply_style_markdown_for_tp",
     "load_trust_state",

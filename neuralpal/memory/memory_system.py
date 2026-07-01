@@ -73,6 +73,7 @@ from neuralpal.core_rules import (
 )
 from neuralpal.characters.models import AICharacter
 from neuralpal.characters.runtime_persona import build_runtime_persona_addon
+from neuralpal.characters.character_rules import is_character_past_query
 from neuralpal.characters.prompt_bridge import build_character_system_addon, resolve_character_for_session
 from neuralpal.memory.transient import TransientBuffer
 from neuralpal.memory.chroma_runtime import get_chroma_client
@@ -253,6 +254,24 @@ _MEMORY_CAPABILITY_BRIDGE_USER: Final[str] = """
 - ② 长期记忆：若出现「长期记忆召回」段落，表示已命中本机知识库，请据实参考。
 - 本轮未出现召回段落，只代表未命中，不代表系统没有记忆功能。
 """.strip()
+
+
+def _developer_identity_bridge(runtime_user: dict[str, str] | None = None) -> str:
+    s = get_settings()
+    dev_name = (
+        (runtime_user or {}).get("username", "").strip()
+        or s.shenzhou_user_display_name.strip()
+        or "开发者"
+    )
+    return f"""
+---
+### 【开发者身份锚点 · 一气化三清联动】
+- 当前开发者账户：**{dev_name}**
+- 一气化三清用户实体 slug：**{s.shenzhou_user_entity_slug}**
+- 一气化三清用户显示名：**{s.shenzhou_user_display_name}**
+- 当开发者询问「我是谁 / 你知道我是谁吗 / who am I」时，优先基于上述实体与世界引擎关联记忆作答。
+""".strip()
+
 
 _AGENT_CAPABILITY_BRIDGE: Final[str] = """
 ---
@@ -1379,28 +1398,29 @@ class NeuralPalMemoryPalaceOrchestrator:
                 self._rolled_summaries = self._rolled_summaries[-120:]
         except Exception as exc:
             logger.warning("③ 混合短期：滚出轮次短摘要失败（忽略）：%s", exc)
-        try:
-            pkg = produce_rolling_archive_package(hu, ast, verbose=self.verbose)
-            sub = str(resolve_memory_subdir(pkg.target_subdir, rolling_archive=True))
-            imp = max(0, min(10, int(pkg.importance)))
-            note = (
-                "【来源】③ 滚动归档·被弹出的一轮完整原文\n"
-                f"用户原文：{hu}\n\n助手原文：{ast}"
-            )
-            self._lt.add_memory(
-                pkg.summary_zh,
-                subdir=sub,
-                memory_type=pkg.memory_type,
-                importance=imp,
-                extra_note=note[:12000],
-            )
-            _verbose_print(
-                self.verbose,
-                f"③ 滚动归档 1 轮 → 子目录={sub} weight={imp} 摘要前32字={pkg.summary_zh[:32]!r}",
-            )
-        except Exception as exc:
-            logger.warning("③ 滚动归档双写失败（已弹出短期消息，不自动回滚）：%s", exc)
-            _verbose_print(self.verbose, f"③ 归档失败：{exc!r}")
+        if not get_settings().memory_tiered_pipeline_only:
+            try:
+                pkg = produce_rolling_archive_package(hu, ast, verbose=self.verbose)
+                sub = str(resolve_memory_subdir(pkg.target_subdir, rolling_archive=True))
+                imp = max(0, min(10, int(pkg.importance)))
+                note = (
+                    "【来源】③ 滚动归档·被弹出的一轮完整原文\n"
+                    f"用户原文：{hu}\n\n助手原文：{ast}"
+                )
+                self._lt.add_memory(
+                    pkg.summary_zh,
+                    subdir=sub,
+                    memory_type=pkg.memory_type,
+                    importance=imp,
+                    extra_note=note[:12000],
+                )
+                _verbose_print(
+                    self.verbose,
+                    f"③ 滚动归档 1 轮 → 子目录={sub} weight={imp} 摘要前32字={pkg.summary_zh[:32]!r}",
+                )
+            except Exception as exc:
+                logger.warning("③ 滚动归档双写失败（已弹出短期消息，不自动回滚）：%s", exc)
+                _verbose_print(self.verbose, f"③ 归档失败：{exc!r}")
 
     def _retrieval_query_for_turn(self, user_text: str) -> str:
         """
@@ -1435,12 +1455,43 @@ class NeuralPalMemoryPalaceOrchestrator:
         顺序固定：core_rules 全文 → 当前 AI 伴侣设定 → 记忆子系统行为说明 → 长期记忆召回块。
         """
         rq = self._retrieval_query_for_turn(user_text)
+        gate = "identity"
         if is_identity_or_preference_query(user_text):
             _verbose_print(self.verbose, "[MEMORY_GATE] identity/preference route selected.")
             retrieved = self._lt.retrieve_identity_memory(rq)
         else:
+            gate = "general"
             _verbose_print(self.verbose, "[MEMORY_GATE] general route selected.")
             retrieved = self._lt.retrieve_for_prompt(rq, top_k=3)
+        picked_ids: list[str] = []
+        picked_reason = ""
+        if get_settings().memory_tiered_pipeline_only:
+            try:
+                from neuralpal.memory.memory_ids import list_memory_catalog
+                from neuralpal.memory.memory_retrieval import (
+                    build_context_from_memory_ids,
+                    select_memory_ids_for_query,
+                )
+
+                catalog = list_memory_catalog(self._palace_root)
+                picked = select_memory_ids_for_query(user_text, catalog)
+                picked_ids = list(picked.memory_ids)
+                picked_reason = picked.reasoning or ""
+                id_block = build_context_from_memory_ids(self._palace_root, picked.memory_ids)
+                if id_block:
+                    retrieved = f"{retrieved}\n\n{id_block}".strip() if retrieved else id_block
+                    _verbose_print(
+                        self.verbose,
+                        f"[MEMORY_ID] selected={picked.memory_ids} reasoning={picked.reasoning[:80]!r}",
+                    )
+            except Exception:
+                logger.debug("memory id retrieval skipped", exc_info=True)
+        self._pending_transparency = {
+            "memory_ids": picked_ids,
+            "reasoning": picked_reason,
+            "vector_used": bool((retrieved or "").strip()),
+            "gate": gate,
+        }
         is_standard_user = (runtime_user or {}).get("role") == "user"
         runtime_name = (runtime_user or {}).get("display_name", "").strip() or "我的 AI 助手"
         block = self._rules_core
@@ -1450,7 +1501,10 @@ class NeuralPalMemoryPalaceOrchestrator:
                 (runtime_user or {}).get("style_prompt", ""),
             )
         elif character is not None:
-            block += "\n\n---\n" + build_character_system_addon(character)
+            block += "\n\n---\n" + build_character_system_addon(
+                character,
+                include_background_memory=is_character_past_query(user_text),
+            )
             _verbose_print(
                 self.verbose,
                 f"[CHARACTER] injected persona={character.name!r} mbti={character.user_mbti}",
@@ -1462,6 +1516,9 @@ class NeuralPalMemoryPalaceOrchestrator:
                 block += "\n\n---\n" + format_work_mode_block(wm, character=character)
             except Exception:
                 logger.debug("work_mode inject skipped", exc_info=True)
+            block += "\n\n---\n" + _developer_identity_bridge(runtime_user)
+        elif not is_standard_user:
+            block += "\n\n---\n" + _developer_identity_bridge(runtime_user)
         if get_settings().agent_enabled and agent_tools_allowed:
             from neuralpal.tools.agent.pending import load_pending
             from neuralpal.tools.agent.prompt_addon import build_agent_system_addon
@@ -2084,7 +2141,7 @@ class NeuralPalMemoryPalaceOrchestrator:
         except Exception:
             pass
         try:
-            if should_persist_conversation_turn(
+            if not get_settings().memory_tiered_pipeline_only and should_persist_conversation_turn(
                 user_text,
                 final_text,
                 verbose=self.verbose,
@@ -2130,6 +2187,23 @@ class NeuralPalMemoryPalaceOrchestrator:
                     sync_overtime_after_agent(self._session_id)
                 except Exception:
                     logger.debug("overtime sync skipped", exc_info=True)
+
+        try:
+            from neuralpal.memory.memory_transparency import append_transparency_record
+
+            pending = getattr(self, "_pending_transparency", None) or {}
+            append_transparency_record(
+                palace_root=self._palace_root,
+                session_id=self._session_id,
+                user_query=user_text,
+                memory_ids=list(pending.get("memory_ids") or []),
+                reasoning=str(pending.get("reasoning") or ""),
+                reply_preview=final_text,
+                vector_used=bool(pending.get("vector_used")),
+                gate=str(pending.get("gate") or "general"),
+            )
+        except Exception:
+            logger.debug("transparency log skipped", exc_info=True)
 
         return MemoryChatTurnResult(
             text=final_text,

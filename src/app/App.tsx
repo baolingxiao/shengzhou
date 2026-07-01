@@ -22,6 +22,7 @@ export default function App() {
         loginError={auth.loginError}
         loggingIn={auth.loggingIn}
         onLogin={auth.login}
+        onRegister={auth.register}
         onLogout={auth.logout}
         onOpenProfile={() => setProfileOpen(true)}
         personaRequired={userPersona.required}

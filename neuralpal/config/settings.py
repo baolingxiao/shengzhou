@@ -1,4 +1,6 @@
 from functools import lru_cache
+import os
+import re
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -8,6 +10,17 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[2]
+
+
+def _default_developer_username() -> str:
+    raw = os.getenv("JARVIS_AUTH_USER", "戴金鑫").strip()
+    token = raw or "戴金鑫"
+    return "戴金鑫" if token == "admin" else token
+
+
+def _default_shenzhou_session_id() -> str:
+    safe = re.sub(r"[^\w\-.]", "_", _default_developer_username())[:80]
+    return f"user-{safe}" if safe else "default"
 
 
 # 始终指向仓库根目录的 .env，避免「在别的 cwd 下启动 CLI / IDE Run」时读不到密钥。
@@ -245,8 +258,19 @@ class Settings(BaseSettings):
         le=86400,
         validation_alias="NEURALPAL_MEMORY_MAINTENANCE_INTERVAL_SECONDS",
     )
+    memory_tiered_pipeline_only: bool = Field(
+        default=True,
+        validation_alias="NEURALPAL_MEMORY_TIERED_PIPELINE",
+    )
 
-    @field_validator("memory_unify_obsidian", mode="before")
+    @field_validator("memory_tiered_pipeline_only", mode="before")
+    @classmethod
+    def _coerce_memory_tiered_pipeline(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if v is None:
+            return True
+        return str(v).strip().lower() in ("1", "true", "yes", "on")
     @classmethod
     def _coerce_memory_unify_obsidian(cls, v: Any) -> bool:
         if v is None or v == "":
@@ -1272,7 +1296,7 @@ class Settings(BaseSettings):
         validation_alias="SHENZHOU_USER_DISPLAY_NAME",
     )
     shenzhou_default_session_id: str = Field(
-        default="user-admin",
+        default_factory=_default_shenzhou_session_id,
         validation_alias="SHENZHOU_DEFAULT_SESSION_ID",
     )
     shenzhou_timezone: str = Field(
@@ -1403,6 +1427,17 @@ class Settings(BaseSettings):
         if isinstance(v, bool):
             return v
         return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+    @field_validator("shenzhou_default_session_id", mode="before")
+    @classmethod
+    def _normalize_shenzhou_default_session_id(cls, v: Any) -> str:
+        token = str(v or "").strip()
+        if not token:
+            return _default_shenzhou_session_id()
+        # 兼容历史默认值 user-admin，自动迁移到 user-<开发者用户名>
+        if token == "user-admin":
+            return _default_shenzhou_session_id()
+        return token
 
     @field_validator("shenzhou_cache_dir", mode="before")
     @classmethod

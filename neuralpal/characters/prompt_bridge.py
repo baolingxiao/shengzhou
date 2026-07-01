@@ -45,7 +45,11 @@ def _tuning_lines(character: AICharacter) -> list[str]:
     return lines
 
 
-def build_character_system_addon(character: AICharacter) -> str:
+def build_character_system_addon(
+    character: AICharacter,
+    *,
+    include_background_memory: bool = False,
+) -> str:
     """生成注入对话 system 的角色人格段（不修改 core_rules 本体）。"""
     profile = get_mbti_profile(character.user_mbti)
     keywords = "、".join(profile.keywords)
@@ -93,9 +97,10 @@ def build_character_system_addon(character: AICharacter) -> str:
 - 自我介绍只建立第一印象，不要一次暴露全部设定。
 - 后续回复的语气、边界与节奏必须与上述自我介绍保持一致。
 """
-    memory_addon = build_character_memory_addon(character)
-    if memory_addon:
-        block += f"\n\n---\n\n{memory_addon}"
+    if include_background_memory:
+        memory_addon = build_character_memory_addon(character)
+        if memory_addon:
+            block += f"\n\n---\n\n{memory_addon}"
     rules_addon = build_character_rules_addon(character)
     if rules_addon:
         block += f"\n\n---\n\n{rules_addon}"

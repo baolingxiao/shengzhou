@@ -345,6 +345,13 @@ def sync_short_term_snapshot(
     try:
         out.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
         publish_palace_file(out)
+        try:
+            from neuralpal.memory.memory_ids import ensure_memory_id
+            from neuralpal.memory.palace_browser import MemoryTier
+
+            ensure_memory_id(repo, out, MemoryTier.SHORT)
+        except Exception as exc:
+            logger.debug("短期记忆编号写入跳过：%s", exc)
         return out
     except OSError as exc:
         logger.warning("短期记忆快照写入失败：%s", exc)

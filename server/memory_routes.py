@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""记忆宫殿与聊天记录管理 API。"""
+"""记忆宫殿管理 API。"""
 
 from __future__ import annotations
 
@@ -96,6 +96,22 @@ async def memory_detail(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.get("/memory/by-id")
+async def memory_by_id(
+    memory_id: str,
+    character_id: str = DEFAULT_CHARACTER_ID,
+) -> dict[str, Any]:
+    from neuralpal.memory.admin_service import get_memory_by_id
+
+    name = _character_name(character_id)
+    try:
+        return get_memory_by_id(name, memory_id.strip().upper())
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @router.delete("/memory")
 async def memory_delete(payload: DeleteMemoryRequest) -> dict[str, bool]:
     name = _character_name(payload.character_id)
@@ -151,6 +167,19 @@ async def memory_optimize_titles(
     return {"character": name, "updated": 0, "queued": True}
 
 
+@router.get("/memory/transparency")
+async def memory_transparency(
+    session_id: str = DEFAULT_SESSION_ID,
+    character_id: str = DEFAULT_CHARACTER_ID,
+    limit: int = Query(80, ge=1, le=200),
+) -> dict[str, Any]:
+    from neuralpal.memory.admin_service import list_memory_transparency
+
+    name = _character_name(character_id)
+    records = list_memory_transparency(name, session_id, limit=limit)
+    return {"character": name, "session_id": session_id, "records": records, "count": len(records)}
+
+
 def attach_memory_message_routes(router: APIRouter, chat_service: Any) -> None:
     @router.post("/memory/messages/delete")
     async def memory_messages_delete(
@@ -184,26 +213,3 @@ def attach_memory_message_routes(router: APIRouter, chat_service: Any) -> None:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-
-def attach_chat_admin_routes(router: APIRouter, chat_service: Any) -> None:
-    """挂载聊天记录管理到同一 admin router。"""
-
-    @router.get("/chat/history")
-    async def chat_history(
-        session_id: str = DEFAULT_SESSION_ID,
-        session: AuthSession = Depends(require_auth_session),
-    ) -> dict[str, Any]:
-        del session_id
-        sid = session_id_for_username(session.username)
-        messages = chat_service.get_session_history(sid)
-        return {"session_id": sid, "messages": messages, "count": len(messages)}
-
-    @router.delete("/chat/session")
-    async def chat_session_clear(
-        session_id: str = DEFAULT_SESSION_ID,
-        session: AuthSession = Depends(require_auth_session),
-    ) -> dict[str, bool]:
-        del session_id
-        chat_service.reset_session(session_id_for_username(session.username))
-        return {"ok": True}

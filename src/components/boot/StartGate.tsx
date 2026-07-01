@@ -16,6 +16,7 @@ type StartGateProps = {
   personaSaving?: boolean
   personaError?: string | null
   onLogin: (username: string, password: string) => Promise<void>
+  onRegister?: (username: string, password: string) => Promise<void>
   onSavePersona?: (
     displayName: string,
     stylePrompt: string,
@@ -59,11 +60,13 @@ export function StartGate({
   personaSaving = false,
   personaError,
   onLogin,
+  onRegister,
   onSavePersona,
   onStart,
   onOpenProfile,
 }: StartGateProps) {
   const [showLoginForm, setShowLoginForm] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -78,6 +81,10 @@ export function StartGate({
   const handleLoginSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (loggingIn || !username.trim() || !password) return
+    if (authMode === 'register') {
+      void onRegister?.(username, password)
+      return
+    }
     void onLogin(username, password)
   }
 
@@ -137,6 +144,9 @@ export function StartGate({
           <p className="text-center text-xs text-white/35">
             普通用户默认账号：user_mason / JarvisUser#2026!
           </p>
+          <p className="text-center text-xs text-white/45">
+            {authMode === 'register' ? '创建普通用户账号（自动登录）' : '已有账号请直接登录'}
+          </p>
           <input
             type="text"
             autoComplete="username"
@@ -148,25 +158,44 @@ export function StartGate({
           />
           <input
             type="password"
-            autoComplete="current-password"
+            autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
             placeholder="密码"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loggingIn}
             className={fieldClass}
           />
+          {authMode === 'register' && (
+            <p className="text-center text-xs text-white/40">
+              用户名支持字母/数字/._-（3-40位），密码至少 8 位。
+            </p>
+          )}
           {loginError && (
             <p className="text-center text-sm text-red-400/90" role="alert">
               {loginError}
             </p>
           )}
-          <button
-            type="submit"
-            disabled={loggingIn || !username.trim() || !password}
-            className={cn(primaryButtonClass, 'mt-1')}
-          >
-            {loggingIn ? '登录中…' : '登录'}
-          </button>
+          <div className="mt-1 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={loggingIn || !username.trim() || !password}
+              className={cn(primaryButtonClass, 'flex-1 px-6')}
+            >
+              {loggingIn ? (authMode === 'register' ? '注册中…' : '登录中…') : (authMode === 'register' ? '注册并登录' : '登录')}
+            </button>
+            <button
+              type="button"
+              disabled={loggingIn}
+              onClick={() => setAuthMode((prev) => (prev === 'login' ? 'register' : 'login'))}
+              className={cn(
+                'rounded-full border border-white/15 px-5 py-3 text-sm text-white/80',
+                'hover:border-white/30 hover:text-white',
+                'disabled:cursor-not-allowed disabled:opacity-40',
+              )}
+            >
+              {authMode === 'register' ? '切回登录' : '去注册'}
+            </button>
+          </div>
         </motion.form>
       </div>
     )
