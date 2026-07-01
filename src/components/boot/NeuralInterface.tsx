@@ -8,6 +8,10 @@ import { useUserSession } from '../../contexts/UserSessionContext'
 import { trace } from '../../lib/debugTrace'
 import { cn } from '../../lib/cn'
 import { DEFAULT_CHARACTER_NAME } from '../../lib/characterConfig'
+import {
+  normalizeThinkingStatusLabel,
+  THINKING_STATUS_LABEL,
+} from '../../lib/chatStatusLabel'
 import { companionEmptyHint, jarvisMotion } from '../../lib/motion/jarvisMotion'
 import { IntimacyBar } from './IntimacyBar'
 import { MemoryPeekPanel } from '../memory/MemoryPeekPanel'
@@ -134,11 +138,13 @@ export function NeuralInterface({
   const statusLabel = (() => {
     if (status === 'offline') return 'Offline'
     if (readAloud.speaking) return 'Speaking'
-    if (realtimeVoiceEnabled && realtimeVoice.isConnected) return `Realtime · ${realtimeStatusLabel || 'Listening'}`
-    if (status === 'thinking') return 'Thinking'
+    if (realtimeVoiceEnabled && realtimeVoice.isConnected) {
+      return normalizeThinkingStatusLabel(`Realtime · ${realtimeStatusLabel || 'Listening'}`)
+    }
+    if (status === 'thinking') return THINKING_STATUS_LABEL
     if (voiceInput.recording) return 'Listening'
     if (voiceInput.transcribing) return 'Transcribing'
-    if (voice.active && voice.statusHint) return voice.statusHint
+    if (voice.active && voice.statusHint) return normalizeThinkingStatusLabel(voice.statusHint)
     return 'Ready'
   })()
 
@@ -149,7 +155,7 @@ export function NeuralInterface({
     <motion.div
       className={cn(
         'absolute inset-x-0 z-30 flex justify-center px-4 pb-5 md:pb-8',
-        'top-[calc(18vh+min(32vmin,200px))] md:top-[calc(16vh+min(32vmin,200px))]',
+        'top-[calc(16vh+min(32vmin,200px))] md:top-[calc(14vh+min(32vmin,200px))]',
         className,
       )}
       initial={jarvisMotion.fadeUp.initial}
@@ -160,7 +166,7 @@ export function NeuralInterface({
         <Panel
           jarvis
           glow
-          className="flex min-h-0 min-w-0 max-h-[min(76vh,640px)] flex-1 flex-col p-4 md:p-5"
+          className="flex h-[min(76vh,640px)] min-h-0 min-w-0 flex-1 flex-col p-4 md:p-5"
         >
           <ConversationHeader
             name={character?.name ?? DEFAULT_CHARACTER_NAME}

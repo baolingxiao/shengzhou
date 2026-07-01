@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '../../lib/cn'
 import { jarvisMotion } from '../../lib/motion/jarvisMotion'
+import { normalizeThinkingStatusLabel } from '../../lib/chatStatusLabel'
 
 type ConversationModeMenuProps = {
   readAloudOn: boolean
@@ -87,7 +88,7 @@ export function ConversationModeMenu({
             {realtimeEnabled ? (
               <ModeRow
                 label="Realtime 语音"
-                hint={realtimeConnected ? realtimeStatus || '已连接' : '关'}
+                hint={realtimeConnected ? normalizeThinkingStatusLabel(realtimeStatus) || '已连接' : '关'}
                 active={realtimeConnected}
                 disabled={disabled}
                 onClick={onToggleRealtime}

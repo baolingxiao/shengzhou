@@ -3,11 +3,18 @@
     "2026-06-24",
     "2026-06-25",
     "2026-06-26",
-    "2026-06-27"
+    "2026-06-27",
+    "2026-06-29"
   ],
-  "last_daily_maintenance_date": "2026-06-29",
+  "last_daily_maintenance_date": "2026-06-30",
+  "last_medium_to_long_month": "2026-06",
   "last_monthly_maintenance_month": "2026-05",
   "last_weekly_maintenance_week": "2026-W26",
+  "last_yearly_maintenance_year": "2025",
+  "long_term_yearly_archived": [],
+  "medium_monthly_rolled": [
+    "2026-06"
+  ],
   "middle_term_archived": [],
   "middle_term_weekly_archived": [
     "2026-W26"
@@ -18,12 +25,15 @@
     "2026-06-24",
     "2026-06-25",
     "2026-06-26",
-    "2026-06-27"
+    "2026-06-27",
+    "2026-06-29"
   ],
   "weekly_chroma_indexed": [
     "2026-W26"
   ],
   "weekly_generated": [
     "2026-W26"
-  ]
+  ],
+  "yearly_chroma_indexed": [],
+  "yearly_generated": []
 }

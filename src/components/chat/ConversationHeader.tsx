@@ -1,5 +1,6 @@
 import { StatusOrb, type StatusOrbState } from '../system/StatusOrb'
 import { cn } from '../../lib/cn'
+import { normalizeThinkingStatusLabel } from '../../lib/chatStatusLabel'
 
 type ConversationHeaderProps = {
   name: string
@@ -19,7 +20,8 @@ export function ConversationHeader({
   trailing,
   className,
 }: ConversationHeaderProps) {
-  const showStatus = statusLabel !== 'Ready' && statusLabel !== 'Offline'
+  const normalizedStatusLabel = normalizeThinkingStatusLabel(statusLabel)
+  const showStatus = normalizedStatusLabel !== 'Ready' && normalizedStatusLabel !== 'Offline'
 
   return (
     <header
@@ -35,7 +37,7 @@ export function ConversationHeader({
             {name}
           </h1>
           {showStatus && (
-            <p className="truncate text-[11px] text-jarvis-text-soft">{statusLabel}</p>
+            <p className="truncate text-[11px] text-jarvis-text-soft">{normalizedStatusLabel}</p>
           )}
         </div>
       </div>

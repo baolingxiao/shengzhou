@@ -3,7 +3,7 @@
   "deferred_task_text": "",
   "awaiting_overtime_consent": false,
   "overtime_active": false,
-  "overtime_granted_at": "",
-  "overtime_expires_at": "",
-  "updated_at": "2026-06-29T15:44:31.435597+00:00"
+  "overtime_granted_at": "2026-07-01T02:35:03.306480+00:00",
+  "overtime_expires_at": "2026-07-01T04:35:03.306480+00:00",
+  "updated_at": "2026-07-01T02:35:45.742344+00:00"
 }

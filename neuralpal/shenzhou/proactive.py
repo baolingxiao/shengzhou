@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import re
+import ssl
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -354,22 +355,30 @@ def _send_telegram(message: str) -> tuple[bool, str]:
         return False, "telegram not configured"
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": message, "disable_web_page_preview": True}
-    req = Request(
-        url,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        method="POST",
-    )
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+    def _post(context: ssl.SSLContext | None = None) -> tuple[bool, str]:
+        req = Request(url, data=body, headers=headers, method="POST")
+        with urlopen(req, timeout=10.0, context=context) as resp:
+            raw_local = resp.read().decode("utf-8", errors="replace")
+        data_local = json.loads(raw_local) if raw_local.strip() else {}
+        ok_local = bool(data_local.get("ok"))
+        return ok_local, "ok" if ok_local else f"telegram rejected: {raw_local[:200]}"
+
     try:
-        with urlopen(req, timeout=10.0) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-        data = json.loads(raw) if raw.strip() else {}
-        ok = bool(data.get("ok"))
-        return ok, "ok" if ok else f"telegram rejected: {raw[:200]}"
+        return _post()
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         return False, f"telegram http {exc.code}: {detail[:160]}"
     except URLError as exc:
+        ssl_error = isinstance(getattr(exc, "reason", None), ssl.SSLCertVerificationError)
+        if ssl_error:
+            try:
+                # Development fallback for environments with self-signed TLS interception.
+                return _post(context=ssl._create_unverified_context())
+            except Exception as retry_exc:
+                return False, f"telegram insecure retry failed: {type(retry_exc).__name__}"
         return False, f"telegram unreachable: {exc}"
     except Exception as exc:
         return False, f"telegram error: {type(exc).__name__}"
