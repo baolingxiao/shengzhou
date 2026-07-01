@@ -55,8 +55,8 @@ function Bubble({
             'absolute -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border text-[10px]',
             isUser ? '-left-1' : '-right-1',
             selected
-              ? 'border-[#07c160] bg-[#07c160] text-white'
-              : 'border-white/40 bg-black/30 text-transparent',
+              ? 'border-jarvis-accent bg-jarvis-accent text-white'
+              : 'border-jarvis-border bg-jarvis-card text-transparent',
           )}
         >
           ✓
@@ -66,10 +66,10 @@ function Bubble({
         className={cn(
           'relative max-w-[min(100%,16rem)] whitespace-pre-wrap break-words px-3 py-2 text-[13px] leading-relaxed transition ring-offset-1',
           isUser
-            ? 'rounded-lg rounded-tr-sm bg-[#95ec69] text-[#111]'
-            : 'rounded-lg rounded-tl-sm bg-white text-[#111] shadow-sm',
+            ? 'rounded-lg rounded-tr-sm bg-jarvis-accent/25 text-jarvis-text'
+            : 'rounded-lg rounded-tl-sm bg-jarvis-card-strong text-jarvis-text shadow-sm',
           selectionMode && 'cursor-pointer',
-          selected && 'ring-2 ring-[#07c160]',
+          selected && 'ring-2 ring-jarvis-accent',
         )}
       >
         {content}
@@ -96,7 +96,7 @@ export function MemoryChatBubbles({
   return (
     <div
       className={cn(
-        'space-y-3 rounded-xl bg-[#ededed] px-3 py-4',
+        'space-y-3 rounded-jarvis-md bg-[#1c1c22] px-3 py-4',
         className,
       )}
     >

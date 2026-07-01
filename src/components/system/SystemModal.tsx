@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Panel } from '../ui/Panel'
 import { cn } from '../../lib/cn'
+import { jarvisMotion } from '../../lib/motion/jarvisMotion'
 
 type SystemModalProps = {
   open: boolean
@@ -19,25 +20,27 @@ export function SystemModal({ open, title, children, className }: SystemModalPro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.28 }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="system-modal-title"
         >
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-[rgba(8,10,14,0.62)] backdrop-blur-md" />
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={jarvisMotion.scaleIn.initial}
+            animate={jarvisMotion.scaleIn.animate}
+            exit={jarvisMotion.scaleIn.exit}
+            transition={jarvisMotion.softSpring}
             className={cn('relative w-full max-w-md', className)}
           >
-            <Panel glow gradient className="p-6 shadow-2xl">
+            <Panel jarvis glow className="p-6 shadow-[0_32px_100px_rgba(0,0,0,0.45)]">
               <h2
                 id="system-modal-title"
-                className="text-lg font-medium tracking-tight text-white/95 [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]"
+                className="text-lg font-normal tracking-[-0.02em] text-jarvis-text"
               >
                 {title}
               </h2>
-              <div className="mt-4 space-y-4 text-sm text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.35)]">
+              <div className="mt-4 space-y-4 text-sm leading-relaxed text-jarvis-text-muted">
                 {children}
               </div>
             </Panel>
@@ -71,7 +74,7 @@ export function ModalActions({
         <button
           type="button"
           onClick={onSecondary}
-          className="rounded-full border border-white/30 px-4 py-2 text-sm text-white/80 transition hover:border-white/50 hover:text-white"
+          className="rounded-full border border-jarvis-border px-4 py-2 text-sm text-jarvis-text-muted transition hover:border-jarvis-border-strong hover:text-jarvis-text"
         >
           {secondaryLabel}
         </button>
@@ -80,7 +83,7 @@ export function ModalActions({
         type="button"
         disabled={primaryDisabled || primaryLoading}
         onClick={onPrimary}
-        className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-[#1a1520] transition hover:bg-white disabled:opacity-50"
+        className="rounded-full bg-[rgba(245,238,222,0.92)] px-4 py-2 text-sm font-medium text-[#1a1814] transition hover:opacity-90 disabled:opacity-50"
       >
         {primaryLoading ? '处理中…' : primaryLabel}
       </button>

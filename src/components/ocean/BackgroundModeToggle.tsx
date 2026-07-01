@@ -1,5 +1,6 @@
 import { cn } from '../../lib/cn'
 import type { BackgroundMode } from '../../hooks/useBackgroundMode'
+import { CornerCapsule } from '../ui/CornerCapsule'
 
 type BackgroundModeToggleProps = {
   mode: BackgroundMode
@@ -40,24 +41,12 @@ export function BackgroundModeToggle({ mode, onToggle, className }: BackgroundMo
   const isOcean = mode === 'ocean'
 
   return (
-    <button
-      type="button"
+    <CornerCapsule
       onClick={onToggle}
       aria-label={isOcean ? '切换为纯色背景' : '切换为海洋背景'}
       title={isOcean ? '纯色背景' : '海洋背景'}
-      className={cn(
-        'flex h-9 w-9 items-center justify-center rounded-full',
-        'border border-white/20 bg-[rgba(55,82,92,0.32)] text-white/80',
-        'shadow-[0_4px_24px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.14)]',
-        'backdrop-blur-xl backdrop-saturate-150',
-        'transition-[background-color,box-shadow,transform,color] duration-300 ease-out',
-        'hover:border-white/28 hover:bg-[rgba(70,106,119,0.42)] hover:text-white',
-        'active:scale-95',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
-        className,
-      )}
-    >
-      {isOcean ? <SolidIcon className="h-[18px] w-[18px]" /> : <OceanIcon className="h-[18px] w-[18px]" />}
-    </button>
+      icon={isOcean ? <SolidIcon className="h-[18px] w-[18px]" /> : <OceanIcon className="h-[18px] w-[18px]" />}
+      className={cn(className)}
+    />
   )
 }

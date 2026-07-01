@@ -9,6 +9,10 @@ export type ChatMessage = {
   id: string
   role: 'user' | 'assistant'
   text: string
+  memoryUsed?: {
+    memoryIds: string[]
+    reasoning?: string
+  }
 }
 
 export type CharacterInfo = {

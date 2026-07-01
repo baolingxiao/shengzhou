@@ -1,7 +1,10 @@
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '../../lib/cn'
 import { useUserSession } from '../../contexts/UserSessionContext'
+import { useAdminRole } from '../../hooks/useAdminRole'
+import { useTrustPoints } from '../../hooks/useTrustPoints'
 import { Panel } from '../ui/Panel'
+import { IntimacyBar } from '../boot/IntimacyBar'
 
 type UserProfilePageProps = {
   open: boolean
@@ -34,7 +37,15 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 /** 用户信息页：展示用户 ID 与记忆会话绑定 */
 export function UserProfilePage({ open, onClose, onLogout }: UserProfilePageProps) {
-  const { username, userId, sessionId, loggedInAt } = useUserSession()
+  const { username, userId, sessionId, loggedInAt, role, isAdmin: sessionIsAdmin } = useUserSession()
+  const isDeveloper = role === 'developer'
+  const isAdmin = useAdminRole(username, sessionIsAdmin, open && isDeveloper)
+  const {
+    trust,
+    saving: trustSaving,
+    setTrustPoints,
+    deltaFlash,
+  } = useTrustPoints(open && isDeveloper, isAdmin, username)
 
   const loggedInLabel =
     loggedInAt != null
@@ -113,6 +124,18 @@ export function UserProfilePage({ open, onClose, onLogout }: UserProfilePageProp
               <p className="mb-5 text-xs leading-relaxed text-white/35">
                 记忆会话 ID 与当前用户绑定。切换账号后，沈昼将读取该用户专属的对话历史与短期记忆。
               </p>
+
+              {isDeveloper && (
+                <div className="mb-5 flex justify-center lg:hidden">
+                  <IntimacyBar
+                    trust={trust}
+                    editable={isAdmin}
+                    saving={trustSaving}
+                    deltaFlash={deltaFlash}
+                    onChange={(value) => void setTrustPoints(value)}
+                  />
+                </div>
+              )}
 
               <div className="flex gap-2">
                 {username && onLogout && (

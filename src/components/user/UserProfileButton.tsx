@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { CornerCapsule } from '../ui/CornerCapsule'
 
 type UserProfileButtonProps = {
   onClick: () => void
@@ -23,25 +23,13 @@ function UserIcon({ className }: { className?: string }) {
 /** 左上角用户信息入口 */
 export function UserProfileButton({ onClick, className, label = '用户' }: UserProfileButtonProps) {
   return (
-    <button
-      type="button"
+    <CornerCapsule
       onClick={onClick}
       aria-label="用户信息"
       title="用户信息"
-      className={cn(
-        'flex h-9 items-center gap-1.5 rounded-full px-3',
-        'border border-white/20 bg-[rgba(55,82,92,0.32)] text-white/80',
-        'shadow-[0_4px_24px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.14)]',
-        'backdrop-blur-xl backdrop-saturate-150',
-        'transition-[background-color,box-shadow,transform,color] duration-300 ease-out',
-        'hover:border-white/28 hover:bg-[rgba(70,106,119,0.42)] hover:text-white',
-        'active:scale-95',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
-        className,
-      )}
-    >
-      <UserIcon className="h-[16px] w-[16px]" />
-      <span className="text-xs font-medium">{label}</span>
-    </button>
+      icon={<UserIcon className="h-4 w-4" />}
+      label={label}
+      className={className}
+    />
   )
 }

@@ -1,18 +1,51 @@
 @import 'tailwindcss';
 
 @theme {
+  /* Cinematic atmosphere palette */
+  --color-bg-night: #0b0d12;
+  --color-bg-deep-blue: #101820;
+  --color-bg-mist: #23383a;
+  --color-bg-warm-fog: #d8c7aa;
+  --color-bg-cream-light: rgba(245, 238, 222, 0.16);
+  --color-bg-vignette: rgba(0, 0, 0, 0.58);
+
   /* Warm mica — soft cream-white with beige undertone */
-  --color-background: #0f0f14;
-  --color-background-soft: #466a77;
-  --color-foreground: #4a433c;
-  --color-muted: #9c948a;
-  --color-glow: #005aa7;
-  --color-glow-core: #fffde4;
-  --color-glow-warm: #005aa7;
+  --color-background: #0b0d12;
+  --color-background-soft: #23383a;
+  --color-foreground: rgba(245, 242, 234, 0.88);
+  --color-muted: rgba(245, 242, 234, 0.52);
+  --color-glow: #d8c7aa;
+  --color-glow-core: #f5f2ea;
+  --color-glow-warm: #d8c7aa;
   --color-surface: #f3ede4;
   --color-border: #e8e0d4;
   --color-rose-top: #fffde4;
-  --color-rose-bottom: #005aa7;
+  --color-rose-bottom: #132126;
+
+  /* Jarvis — warm companion glass */
+  --color-jarvis-bg: #0b0d12;
+  --color-jarvis-bg-soft: #12161a;
+  --color-jarvis-surface: rgba(255, 255, 255, 0.72);
+  --color-jarvis-surface-dark: rgba(22, 25, 29, 0.72);
+  --color-jarvis-card: rgba(255, 255, 255, 0.07);
+  --color-jarvis-card-strong: rgba(255, 255, 255, 0.1);
+  --color-jarvis-card-warm: rgba(255, 248, 236, 0.08);
+  --color-jarvis-border: rgba(255, 255, 255, 0.12);
+  --color-jarvis-border-strong: rgba(255, 255, 255, 0.18);
+  --color-jarvis-text: #f5f2ea;
+  --color-jarvis-text-muted: rgba(245, 242, 234, 0.58);
+  --color-jarvis-text-soft: rgba(245, 242, 234, 0.38);
+  --color-jarvis-greeting: rgba(245, 242, 234, 0.72);
+  --color-jarvis-accent: #f5d7a1;
+  --color-jarvis-accent-soft: rgba(245, 215, 161, 0.16);
+  --color-jarvis-blue: #8eb4c8;
+  --color-jarvis-green: #b8c9a8;
+  --color-jarvis-red: #e08a82;
+  --radius-jarvis-sm: 14px;
+  --radius-jarvis-md: 20px;
+  --radius-jarvis-lg: 28px;
+  --radius-jarvis-xl: 36px;
+  --blur-jarvis: 28px;
 
   --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -34,11 +67,61 @@ body,
 body {
   font-family: var(--font-sans);
   color: var(--color-foreground);
-  background-color: #0f0f14;
+  background-color: var(--color-bg-night);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
   background: color-mix(in srgb, var(--color-glow) 20%, var(--color-background));
+}
+
+/* —— Cinematic Atmosphere —— */
+@keyframes atmosphere-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.94;
+    transform: scale(1.015);
+  }
+}
+
+.atmosphere-breathe {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(216, 199, 170, 0.14), transparent 34%),
+    radial-gradient(circle at 50% 52%, rgba(82, 123, 125, 0.28), transparent 48%),
+    radial-gradient(circle at 50% 88%, rgba(245, 238, 222, 0.08), transparent 42%),
+    linear-gradient(180deg, #0b0d12 0%, #132126 45%, #0b0d12 100%);
+  animation: atmosphere-breathe 24s ease-in-out infinite;
+  transform-origin: 50% 45%;
+}
+
+.atmosphere-volume-light {
+  background: radial-gradient(
+    ellipse 72% 48% at 50% 58%,
+    rgba(245, 238, 222, 0.1),
+    transparent 68%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+.atmosphere-vignette {
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(0, 0, 0, 0.58) 100%);
+}
+
+.atmosphere-grain {
+  opacity: 0.038;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+.atmosphere-ocean-warm {
+  background:
+    radial-gradient(circle at 50% 55%, rgba(216, 199, 170, 0.1), transparent 50%),
+    linear-gradient(180deg, rgba(11, 13, 18, 0.15) 0%, rgba(11, 13, 18, 0.42) 100%);
+  mix-blend-mode: soft-light;
 }

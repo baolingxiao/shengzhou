@@ -12,6 +12,7 @@ import { DEFAULT_CHARACTER_ID } from '../lib/characterConfig'
 import { delayForSegment, sleep } from '../lib/replySegments'
 import { trace } from '../lib/debugTrace'
 import { beginTrace } from '../lib/executionTrace'
+import { useMemoryTransparencyAttach } from './useMemoryTransparency'
 
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -19,6 +20,7 @@ function makeId() {
 
 export function useChat(enabled: boolean, onChatReply?: (reply: ChatReply) => void) {
   const { sessionId } = useUserSession()
+  const { attachToLastAssistant } = useMemoryTransparencyAttach(sessionId)
   const [character, setCharacter] = useState<CharacterInfo | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -95,17 +97,30 @@ export function useChat(enabled: boolean, onChatReply?: (reply: ChatReply) => vo
       })
       const parts =
         reply.segments && reply.segments.length > 0 ? reply.segments : [reply.text]
+      const assistantIds: string[] = []
       for (let i = 0; i < parts.length; i += 1) {
         if (i > 0) {
           await sleep(delayForSegment(parts[i] ?? '', i))
         }
+        const partText = parts[i] ?? ''
+        const msgId = makeId()
+        assistantIds.push(msgId)
         setMessages((prev) => [
           ...prev,
-          { id: makeId(), role: 'assistant', text: parts[i] ?? '' },
+          { id: msgId, role: 'assistant', text: partText },
         ])
       }
       setStatus('ready')
       onChatReply?.(reply)
+      const fullReply = parts.join('')
+      void attachToLastAssistant(text, fullReply).then((memoryUsed) => {
+        if (!memoryUsed) return
+        const lastId = assistantIds[assistantIds.length - 1]
+        if (!lastId) return
+        setMessages((prev) =>
+          prev.map((m) => (m.id === lastId ? { ...m, memoryUsed } : m)),
+        )
+      })
       return reply
     } catch (err) {
       trace('chat.send_error', { error: String(err) }, 'alert')
@@ -113,7 +128,7 @@ export function useChat(enabled: boolean, onChatReply?: (reply: ChatReply) => vo
       setStatus('ready')
       return null
     }
-  }, [status, sessionId, onChatReply])
+  }, [status, sessionId, onChatReply, attachToLastAssistant])
 
   const send = useCallback(async () => {
     await sendText(input)

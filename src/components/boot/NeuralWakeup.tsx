@@ -12,6 +12,7 @@ import { WakeupAudio, type PlayWakeupAudio } from './WakeupAudio'
 import { WakeupText } from './WakeupText'
 import { OceanBackground } from '../ocean/OceanBackground'
 import { OceanBackgroundBgm } from '../ocean/OceanBackgroundBgm'
+import { CinematicAtmosphere } from '../ocean/CinematicAtmosphere'
 import { SolidBackground } from '../ocean/SolidBackground'
 import { BackgroundModeToggle } from '../ocean/BackgroundModeToggle'
 import { useBackgroundMode } from '../../hooks/useBackgroundMode'
@@ -218,6 +219,7 @@ export function NeuralWakeup({
 
   return (
     <div className="relative min-h-full overflow-hidden">
+      <CinematicAtmosphere oceanBlend={isOcean} />
       <SolidBackground active={!isOcean} />
       <OceanBackgroundBgm active={oceanBgmEnabled} unlocked={ambientUnlocked} />
       <OceanBackground active={isOcean} />
@@ -274,7 +276,7 @@ export function NeuralWakeup({
           <WakeupText
             visible={showFinale}
             name={userName}
-            className="absolute bottom-[calc(100%+1.25rem)] left-1/2 w-[max(100%,280px)] -translate-x-1/2"
+            className="absolute bottom-[calc(100%+1rem)] left-1/2 w-[max(100%,280px)] -translate-x-1/2"
           />
 
           <motion.div
@@ -286,9 +288,9 @@ export function NeuralWakeup({
 
           {!chatUnlocked && (
             <div className="pointer-events-none mt-6 text-center">
-              <p className="text-[22px] font-bold tracking-tight text-foreground">Rose Two</p>
-              <p className="mt-1.5 text-[13px] uppercase tracking-[0.18em] text-muted">
-                r = a cos(2θ)
+              <p className="text-[22px] font-light tracking-[-0.03em] text-jarvis-text">Jarvis</p>
+              <p className="mt-1.5 text-[13px] tracking-[0.02em] text-jarvis-greeting">
+                An AI That Lives With You
               </p>
             </div>
           )}
